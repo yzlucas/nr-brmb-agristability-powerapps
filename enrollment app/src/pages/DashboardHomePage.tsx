@@ -291,6 +291,7 @@ export function DashboardHomePage() {
     flagged: false,
     partnerships: false,
     fortyFiveDayLetter: false,
+    varianceAlert: false,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<Set<string>>(new Set());

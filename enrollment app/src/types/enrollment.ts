@@ -49,6 +49,7 @@ export interface QuickFilterState {
   flagged: boolean;
   partnerships: boolean;
   fortyFiveDayLetter: boolean;
+  varianceAlert: boolean;
 }
 
 export interface ViewPayload {

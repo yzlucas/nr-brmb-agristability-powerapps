@@ -80,6 +80,11 @@ const DEFAULT_FILTER_OPS: Record<SupervisorColumnKey, FilterOperator> = {
   workedOn: 'equals',
 };
 
+const DEFAULT_COLUMN_WIDTHS: Partial<Record<SupervisorColumnKey, number>> = {
+  workedBy: 120,
+  workedOn: 110,
+};
+
 const createEmptyFilters = (): Record<SupervisorColumnKey, Set<string>> => ({
   enrolmentName: new Set(),
   participant: new Set(),
@@ -175,7 +180,7 @@ export function SupervisorApprovalPage() {
   const [colDragIdx, setColDragIdx] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<SupervisorColumnKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [columnWidths, setColumnWidths] = useState<Partial<Record<SupervisorColumnKey, number>>>({});
+  const [columnWidths, setColumnWidths] = useState<Partial<Record<SupervisorColumnKey, number>>>(DEFAULT_COLUMN_WIDTHS);
   const [columnFilters, setColumnFilters] = useState<Record<SupervisorColumnKey, Set<string>>>(() => createEmptyFilters());
   const [columnFilterOps, setColumnFilterOps] = useState<Record<SupervisorColumnKey, FilterOperator>>(DEFAULT_FILTER_OPS);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -1195,8 +1200,25 @@ export function SupervisorApprovalPage() {
                       <td className="sa-td-actions">
                         <div className="sa-row-actions">
                           {itemId
-                            ? <Link to={`/calculation/supervisor/${itemId}`} title="Go to calculation" className="sa-calc-link"><Calculator size={16} /></Link>
-                            : <span title="Go to calculation"><Calculator size={16} className="sa-action-icon-disabled" /></span>}
+                            ? (
+                              <Link
+                                to={`/calculation/supervisor/${itemId}`}
+                                aria-label="Go to calculation"
+                                data-tooltip="Go to calculation"
+                                className="sa-calc-link"
+                              >
+                                <Calculator size={16} />
+                              </Link>
+                            )
+                            : (
+                              <span
+                                aria-label="Go to calculation"
+                                data-tooltip="Go to calculation"
+                                className="sa-calc-link sa-calc-link-disabled"
+                              >
+                                <Calculator size={16} className="sa-action-icon-disabled" />
+                              </span>
+                            )}
                         </div>
                       </td>
                     </tr>

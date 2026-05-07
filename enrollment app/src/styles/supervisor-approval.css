@@ -2,7 +2,7 @@
 .sa-worked-by-cell {
   text-align: left;
   vertical-align: middle;
-  min-width: 120px;
+  min-width: 80px;
 }
 
 .sa-worked-by-content {
@@ -327,12 +327,50 @@
 .sa-calc-link {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  position: relative;
   color: #64748b;
   text-decoration: none;
 }
 
 .sa-calc-link:hover {
   color: #334155;
+}
+
+.sa-calc-link::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 50%;
+  bottom: calc(100% + 0.45rem);
+  transform: translateX(50%);
+  z-index: 20;
+  width: max-content;
+  max-width: 10rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 4px;
+  background: #111827;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.sa-calc-link:hover::after,
+.sa-calc-link:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sa-td-actions .sa-calc-link::after {
+  right: 0;
+  transform: none;
+}
+
+.sa-calc-link-disabled {
+  cursor: default;
 }
 
 /* Pagination */

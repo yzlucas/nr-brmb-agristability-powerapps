@@ -60,7 +60,7 @@ export function useViews(state: ViewState, setters: {
     setters.setColumnWidths({ ...view.columnWidths });
     setters.setSortKey(view.sortKey);
     setters.setSortDir(view.sortDir);
-    setters.setFilters({ ...view.filters });
+    setters.setFilters({ ...DEFAULT_VIEW_SNAPSHOT.filters, ...view.filters });
     setters.setTaskStatusFilter(new Set(view.taskStatusFilter));
     setters.setEnrolStatusFilter(new Set(view.enrolStatusFilter));
     setters.setTaskFilterOp(view.taskFilterOp ?? 'equals');
@@ -96,7 +96,7 @@ export function useViews(state: ViewState, setters: {
         columnWidths: { ...view.columnWidths },
         sortKey: view.sortKey,
         sortDir: view.sortDir,
-        filters: { ...view.filters },
+        filters: { ...DEFAULT_VIEW_SNAPSHOT.filters, ...view.filters },
         taskStatusFilter: [...view.taskStatusFilter],
         enrolStatusFilter: [...view.enrolStatusFilter],
         taskFilterOp: view.taskFilterOp,
