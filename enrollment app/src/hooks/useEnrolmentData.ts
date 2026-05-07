@@ -301,7 +301,7 @@ export function useSortedAndFilteredRows(
     });
   }, [rows, sortKey, sortDir]);
 
-  const anyFilter = filters.verifiedCalc || filters.unverifiedCalc || filters.flagged || filters.partnerships || filters.fortyFiveDayLetter;
+  const anyFilter = filters.verifiedCalc || filters.unverifiedCalc || filters.flagged || filters.partnerships || filters.fortyFiveDayLetter || filters.varianceAlert;
 
   const isYesValue = useCallback((value: unknown): boolean => {
     if (value === true || value === 1 || value === '1') return true;
@@ -329,6 +329,13 @@ export function useSortedAndFilteredRows(
     return Math.abs(variance) > FLAGGED_VARIANCE_THRESHOLD;
   }, []);
 
+  const hasVarianceAlert = useCallback((row: Vsi_participantprogramyears): boolean => {
+    const variance = row.vsi_calculatedenfee != null && row.vsi_variancecalculation != null
+      ? row.vsi_variancecalculation * 100
+      : null;
+    return variance != null && Math.abs(variance) >= FLAGGED_VARIANCE_THRESHOLD;
+  }, []);
+
   const filteredRows = useMemo(() => {
     let result = sortedRows;
 
@@ -341,12 +348,14 @@ export function useSortedAndFilteredRows(
         const matchesFlagged = isFlaggedByVariance(row);
         const matchesPartnerships = isYesValue(row.vsi_haspartners) || isYesValue(row.vsi_incombinedfarm);
         const matchesFortyFiveDayLetter = getEnrolmentStatusLabel(row.vsi_enrolmentstatus) === 'ToBeReviewed';
+        const matchesVarianceAlert = hasVarianceAlert(row);
 
         if (filters.verifiedCalc && !matchesVerifiedCalc) return false;
         if (filters.unverifiedCalc && !matchesUnverifiedCalc) return false;
         if (filters.flagged && !matchesFlagged) return false;
         if (filters.partnerships && !matchesPartnerships) return false;
         if (filters.fortyFiveDayLetter && !matchesFortyFiveDayLetter) return false;
+        if (filters.varianceAlert && !matchesVarianceAlert) return false;
         return true;
       });
     }
@@ -393,7 +402,7 @@ export function useSortedAndFilteredRows(
     }
 
     return result;
-  }, [sortedRows, filters, anyFilter, taskStatusFilter, enrolStatusFilter, yearFilter, ownerFilter, taskFilterOp, enrolFilterOp, advFilterNodes, advLogicOp, matchAdvNode, isYesValue, isReadyTaskStatus, isFlaggedByVariance]);
+  }, [sortedRows, filters, anyFilter, taskStatusFilter, enrolStatusFilter, yearFilter, ownerFilter, taskFilterOp, enrolFilterOp, advFilterNodes, advLogicOp, matchAdvNode, isYesValue, isReadyTaskStatus, isFlaggedByVariance, hasVarianceAlert]);
 
   return { filteredRows, taskStatusOptions, enrolStatusOptions, yearOptions, ownerOptions };
 }
