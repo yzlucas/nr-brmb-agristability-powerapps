@@ -11,7 +11,7 @@ import { QueuesService } from '../generated/services/QueuesService';
 import { Office365UsersService } from '../generated/services/Office365UsersService';
 import { ColumnHeaderMenu } from '../components/ColumnHeaderMenu';
 
-import { enrolmentStatusClass, formatCurrencyOr, formatVariancePercent, getEnrolmentStatusLabel, getInitials, getTaskStatusLabel, getVarianceClass, getAvatarColor } from '../utils/helpers';
+import { formatCurrencyOr, formatEnrolmentStatusDisplay, formatVariancePercent, getEnrolmentStatusLabel, getInitials, getTaskStatusLabel, getVarianceClass, getAvatarColor } from '../utils/helpers';
 import { AssignWorkerModal } from '../components/AssignWorkerModal';
 import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
 import ManualErrorModal from '../components/ManualErrorModal';
@@ -1147,7 +1147,7 @@ export function SupervisorApprovalPage() {
                           const statusLabel = getEnrolmentStatusLabel(item.vsi_enrolmentstatus);
                           return (
                             <td key={key}>
-                              <span className={`enrol-badge ${enrolmentStatusClass(statusLabel)}`}>{statusLabel || '—'}</span>
+                              <span className="enrol-badge">{formatEnrolmentStatusDisplay(statusLabel) || '—'}</span>
                             </td>
                           );
                         }

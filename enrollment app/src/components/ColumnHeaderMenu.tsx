@@ -15,6 +15,7 @@ export type ColumnHeaderDragProps = {
 
 export type ColumnHeaderFilterProps = {
   filterOptions?: string[];
+  filterOptionLabels?: Record<string, string>;
   selectedFilters?: Set<string>;
   filterOperator?: FilterOperator;
   onFilterChange?: (next: Set<string>) => void;
@@ -39,6 +40,7 @@ export function ColumnHeaderMenu<K extends string = string>({
   currentSortDir,
   onSort,
   filterOptions,
+  filterOptionLabels,
   selectedFilters,
   filterOperator,
   onFilterChange,
@@ -168,7 +170,7 @@ export function ColumnHeaderMenu<K extends string = string>({
                   {filterOptions.map(opt => (
                     <label key={opt} className="chm-value-item">
                       <input type="checkbox" checked={selectedFilters.has(opt)} onChange={() => toggle(opt)} />
-                      <span>{opt}</span>
+                      <span>{filterOptionLabels?.[opt] ?? opt}</span>
                     </label>
                   ))}
                 </div>
