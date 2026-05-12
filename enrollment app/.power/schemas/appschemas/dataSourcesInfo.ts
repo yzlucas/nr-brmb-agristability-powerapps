@@ -3523,6 +3523,13 @@ export const dataSourcesInfo = {
       }
     }
   },
+  "accounts": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "accountid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "vsi_armsconfigurations": {
     "tableId": "",
     "version": "",
