@@ -93,6 +93,10 @@
         "systemuserroles": {
           "entitySetName": "systemuserrolescollection",
           "logicalName": "systemuserroles"
+        },
+        "accounts": {
+          "entitySetName": "accounts",
+          "logicalName": "account"
         }
       },
       "version": "v9.0",

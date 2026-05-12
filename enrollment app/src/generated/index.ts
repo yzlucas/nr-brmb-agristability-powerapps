@@ -4,6 +4,7 @@
  */
 
 // Models
+export * as AccountsModel from './models/AccountsModel';
 export * as CommonModels from './models/CommonModels';
 export * as FARMSAPIModel from './models/FARMSAPIModel';
 export * as HTTPWorkflowsModel from './models/HTTPWorkflowsModel';
@@ -24,6 +25,7 @@ export * as Vsi_enrolmenthistoriesModel from './models/Vsi_enrolmenthistoriesMod
 export * as Vsi_participantprogramyearsModel from './models/Vsi_participantprogramyearsModel';
 
 // Services
+export * from './services/AccountsService';
 export * from './services/FARMSAPIService';
 export * from './services/HTTPWorkflowsService';
 export * from './services/MicrosoftDataverseService';

@@ -73,6 +73,59 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+  width: 100%;
+  max-width: none;
+  min-height: calc(100% - 2rem);
+  margin: 1rem 0;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.calc-record-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.calc-record-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.calc-pin-line {
+  margin: 0;
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.calc-pin-line span {
+  color: #111827;
+  font-weight: 800;
+}
+
+.calc-participant-name {
+  margin: 0.15rem 0 0.9rem;
+  color: #111827;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.calc-primary-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.calc-sharepoint-action {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 .calc-state {
@@ -83,6 +136,76 @@ button:focus-visible {
 
 .calc-state-error {
   color: #b42318;
+}
+
+.calc-benefit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.calc-benefit-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #1e3a8a;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.calc-benefit-radio {
+  width: 0.72rem;
+  height: 0.72rem;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  background: #f8fafc;
+}
+
+.calc-benefit-title {
+  margin: 0;
+  color: #1d4f91;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.calc-benefit-table-wrap {
+  overflow-x: auto;
+}
+
+.calc-benefit-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #0f172a;
+  font-size: 0.86rem;
+}
+
+.calc-benefit-table th,
+.calc-benefit-table td {
+  border: 2px solid #dbeafe;
+  padding: 0.65rem 0.55rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.calc-benefit-table thead th {
+  background: #5b9bd5;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.calc-benefit-table tbody th {
+  width: 10.5rem;
+  background: #5b9bd5;
+  color: #ffffff;
+  font-weight: 800;
+  text-align: left;
+}
+
+.calc-benefit-table tbody td {
+  background: #e5e7eb;
+  font-weight: 700;
 }
 
 .calc-summary-card {
@@ -118,6 +241,44 @@ button:focus-visible {
   font-weight: 600;
 }
 
+.calc-outline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.1rem;
+  padding: 0 0.8rem;
+  border: 1px solid #64748b;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.calc-outline-btn:hover:not(:disabled) {
+  border-color: #334155;
+  background: #f8fafc;
+  color: #111827;
+}
+
+.calc-outline-btn:disabled {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.calc-sharepoint-icon {
+  width: 1rem;
+  height: 1rem;
+  object-fit: contain;
+}
+
 .calc-links {
   display: flex;
   gap: 1rem;
@@ -125,6 +286,15 @@ button:focus-visible {
 }
 
 @media (max-width: 720px) {
+  .calc-record-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .calc-sharepoint-action {
+    justify-content: flex-start;
+  }
+
   .calc-summary-grid {
     grid-template-columns: 1fr;
   }
