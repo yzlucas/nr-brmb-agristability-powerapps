@@ -1,10 +1,10 @@
-﻿import type { Vsi_participantprogramyears } from "../generated/models/Vsi_participantprogramyearsModel";
+import type { Vsi_participantprogramyears } from "../generated/models/Vsi_participantprogramyearsModel";
 
 export type SortDir = 'asc' | 'desc';
 
 export type SortKey =
   | 'pin' | 'producer' | 'year' | 'taskStatus' | 'enrolStatus' | 'fee'
-  | 'sharepoint' | 'totalFeesOwed' | 'totalFeesPaid'
+  | 'sharepoint' | 'totalFeesOwedCalculated' | 'totalFeesPaid'
   | 'enrolmentFee' | 'latePay' | 'regionalOffice' | 'farmingSector'
   | 'bringForward' | 'broughtForward' | 'hasPartners' | 'inCombinedFarm'
   | 'manualReview' | 'enrolNoticeDate' | 'fileReceivedDate' | 'feesPaidDate'
@@ -75,3 +75,4 @@ export interface PersonalView extends ViewPayload {
 }
 
 export type EnrolmentRow = Vsi_participantprogramyears;
+

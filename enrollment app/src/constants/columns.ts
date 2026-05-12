@@ -8,7 +8,7 @@ export const ALL_COLUMNS: ColumnDef[] = [
   { key: 'enrolStatus', label: 'Enrolment Status', icon: 'list', removable: true },
   { key: 'taskStatus', label: 'Task Status', icon: 'list', removable: true },
   { key: 'fee', label: 'Calculated fee', icon: 'number', removable: true },
-  { key: 'totalFeesOwed', label: 'Total Fees Owed', icon: 'number', removable: true },
+  { key: 'totalFeesOwedCalculated', label: 'Total Fees Owed', icon: 'number', removable: true },
   { key: 'totalFeesPaid', label: 'Total Fees Paid', icon: 'number', removable: true },
   { key: 'enrolmentFee', label: 'Enrolment Fee', icon: 'number', removable: true },
   { key: 'latePay', label: 'Late Payment Fee', icon: 'number', removable: true },
@@ -38,7 +38,7 @@ export const SORTKEY_TO_FIELD: Record<SortKey, string> = {
   taskStatus: 'vsi_taskstatus',
   enrolStatus: 'vsi_enrolmentstatus',
   fee: 'vsi_calculatedenfee',
-  totalFeesOwed: 'vsi_totalfeesowed',
+  totalFeesOwedCalculated: 'vsi_totalfeesowedcalculated',
   totalFeesPaid: 'vsi_totalfeespaid',
   enrolmentFee: 'vsi_enrolmentfee',
   latePay: 'vsi_latepaymentfee',
@@ -118,3 +118,4 @@ export const ADV_OP_LABELS: Record<string, string> = {
   beginsWith: 'Begins with',
   endsWith: 'Ends with',
 };
+

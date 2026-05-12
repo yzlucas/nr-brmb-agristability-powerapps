@@ -9,8 +9,8 @@ import {
 import type { SortKey } from '../types/enrollment';
 import {
   getEnrolmentStatusLabel, getTaskStatusLabel, taskStatusIcon,
-  enrolmentStatusClass, formatCurrency, getInitials, getAvatarColor,
-  getVarianceClass, formatVariancePercent,
+  formatCurrency, getInitials, getAvatarColor,
+  getVarianceClass, formatVariancePercent, formatEnrolmentStatusDisplay,
 } from '../utils/helpers';
 
 const CORE_APP_ID_FALLBACK = '88c024d9-9fd5-ec11-a7b5-002248ada475';
@@ -64,7 +64,7 @@ export function renderCell(
     }
     case 'enrolStatus': {
       const l = getEnrolmentStatusLabel(row.vsi_enrolmentstatus);
-      return <td key={key}><span className={`enrol-badge ${enrolmentStatusClass(l)}`}>{l}</span></td>;
+      return <td key={key}><span className="enrol-badge">{formatEnrolmentStatusDisplay(l)}</span></td>;
     }
     case 'fee': {
       const variance = row.vsi_calculatedenfee != null && row.vsi_variancecalculation != null ? row.vsi_variancecalculation * 100 : null;
@@ -82,7 +82,7 @@ export function renderCell(
         </td>
       );
     }
-    case 'totalFeesOwed': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_totalfeesowed)}</td>;
+    case 'totalFeesOwedCalculated': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_totalfeesowedcalculated)}</td>;
     case 'totalFeesPaid': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_totalfeespaid)}</td>;
     case 'enrolmentFee': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_enrolmentfee)}</td>;
     case 'latePay': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_latepaymentfee)}</td>;
@@ -130,3 +130,4 @@ export function renderCell(
     default: return <td key={key}></td>;
   }
 }
+

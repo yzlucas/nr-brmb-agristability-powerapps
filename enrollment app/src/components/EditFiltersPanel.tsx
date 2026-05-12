@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { AdvFilterNode, AdvFilterRow, AdvFilterGroup, AdvFilterField, AdvFilterOp, LogicOp } from '../types/enrollment';
 import { ADV_FIELD_LABELS, ADV_FIELD_OPTIONS, ADV_OP_LABELS } from '../constants/columns';
-import { getChoiceOptions } from '../utils/helpers';
+import { getChoiceOptions, formatEnrolmentStatusDisplay } from '../utils/helpers';
 import {
   cloneNode, updateNodeInTree, wrapNodeInGroup, ungroupNode,
   addNodeToParent, emptyFilterRow, emptyFilterGroup, summarizeGroup,
@@ -81,6 +81,7 @@ function FilterRowEditor({
 }) {
   const fieldType = row.field ? ADV_FIELD_OPTIONS[row.field] : null;
   const choiceOpts = fieldType === 'choice' ? getChoiceOptions(row.field) : [];
+  const formatChoiceLabel = (opt: string) => row.field === 'enrolStatus' ? formatEnrolmentStatusDisplay(opt) : opt;
   const [valDropdownOpen, setValDropdownOpen] = useState(false);
 
   const toggleValue = (val: string) => {
@@ -121,7 +122,7 @@ function FilterRowEditor({
       {fieldType === 'choice' ? (
         <div className="ef-cell ef-cell-val ef-val-choice-wrapper">
           <button className="ef-val-choice-btn" onClick={() => setValDropdownOpen(o => !o)}>
-            {row.values.size === 0 ? <span className="ef-val-placeholder">Value</span> : [...row.values].join(', ')}
+            {row.values.size === 0 ? <span className="ef-val-placeholder">Value</span> : [...row.values].map(formatChoiceLabel).join(', ')}
             <span className="ef-val-chevron">▾</span>
           </button>
           {valDropdownOpen && (
@@ -131,7 +132,7 @@ function FilterRowEditor({
                 {choiceOpts.map(opt => (
                   <label key={opt} className="ef-val-opt">
                     <input type="checkbox" checked={row.values.has(opt)} onChange={() => toggleValue(opt)} />
-                    <span>{opt}</span>
+                    <span>{formatChoiceLabel(opt)}</span>
                   </label>
                 ))}
               </div>

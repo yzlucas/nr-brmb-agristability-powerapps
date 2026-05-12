@@ -365,9 +365,6 @@ export function parseFetchXmlToFilters(fetchxml: string | undefined | null): Par
     const hasAttr = (attr: string) => conditions.some(c => c.attr === attr);
     const hasEq = (attr: string, val: string) =>
       conditions.some(c => c.attr === attr && c.op === 'eq' && c.val === val);
-    const hasNe = (attr: string, val: string) =>
-      conditions.some(c => c.attr === attr && (c.op === 'ne' || c.op === 'neq') && c.val === val);
-
     const result: Partial<QuickFilterState> = {};
 
     // Partnerships/Combined: any condition on vsi_haspartners or vsi_incombinedfarm
@@ -375,20 +372,18 @@ export function parseFetchXmlToFilters(fetchxml: string | undefined | null): Par
       result.partnerships = true;
     }
 
-    // EN fee calculated
-    const feeCalcPresent = hasEq('vsi_enrolmentfeecalculated', '1') || hasEq('vsi_enrolmentfeecalculated', 'true');
-    if (feeCalcPresent) {
-      // Verified = fee calculated AND task status = Ready (865520002)
-      if (hasEq('vsi_taskstatus', '865520002')) {
-        result.verifiedCalc = true;
-      } else if (!hasAttr('vsi_taskstatus') || hasNe('vsi_taskstatus', '865520002')) {
-        // Unverified = fee calculated AND task status NOT ready
-        result.unverifiedCalc = true;
-      }
+    // Verified EN Calculated = enrolment status = VerifiedENCalculalted (865520006)
+    if (hasEq('vsi_enrolmentstatus', '865520006')) {
+      result.verifiedCalc = true;
     }
 
-    // 45-day letter: enrolment status = ToBeReviewed (865520009)
-    if (hasEq('vsi_enrolmentstatus', '865520009')) {
+    // Unverified EN Calculated = enrolment status = UnverifiedENCalculated (865520005)
+    if (hasEq('vsi_enrolmentstatus', '865520005')) {
+      result.unverifiedCalc = true;
+    }
+
+    // 45-day letter: enrolment status = _45DayLetter (865520010)
+    if (hasEq('vsi_enrolmentstatus', '865520010')) {
       result.fortyFiveDayLetter = true;
     }
 
