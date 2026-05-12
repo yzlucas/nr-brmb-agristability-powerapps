@@ -233,7 +233,13 @@ export function userqueryToView(uq: Userqueries): PersonalView {
   try {
     const payload: ViewPayload = JSON.parse(uq.layoutjson ?? '{}');
     if (payload.visibleColumnKeys) {
-      return { id: uq.userqueryid, name: uq.name, source: 'personal', ...payload };
+      return {
+        id: uq.userqueryid,
+        name: uq.name,
+        source: 'personal',
+        ...payload,
+        filters: { ...DEFAULT_VIEW_SNAPSHOT.filters, ...payload.filters },
+      };
     }
   } catch { /* layoutjson not in our format */ }
   const xmlCols = parseLayoutXml(uq.layoutxml);

@@ -81,7 +81,7 @@ export const DEFAULT_VIEW_SNAPSHOT: ViewPayload = {
   columnWidths: {},
   sortKey: null,
   sortDir: 'asc',
-  filters: { verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: false },
+  filters: { verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: false, varianceAlert: false },
   taskStatusFilter: [],
   enrolStatusFilter: [],
   taskFilterOp: 'equals',

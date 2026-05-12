@@ -19,6 +19,7 @@ export function EnrolmentQuickFilters({
       <label><input type="checkbox" checked={filters.flagged} onChange={() => onToggleFilter('flagged')} /> Flagged files</label>
       <label><input type="checkbox" checked={filters.partnerships} onChange={() => onToggleFilter('partnerships')} /> Partnerships/Combined</label>
       <label><input type="checkbox" checked={filters.fortyFiveDayLetter} onChange={() => onToggleFilter('fortyFiveDayLetter')} /> 45 day Letter</label>
+      <label><input type="checkbox" checked={filters.varianceAlert} onChange={() => onToggleFilter('varianceAlert')} /> Variance Alert</label>
       {activeAdvancedCount > 0 && (
         <span className="ef-active-count">{activeAdvancedCount} advanced filter(s)</span>
       )}
