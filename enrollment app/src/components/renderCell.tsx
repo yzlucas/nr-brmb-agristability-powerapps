@@ -72,13 +72,15 @@ export function renderCell(
           <div className="enrol-status-cell">
             <span className="enrol-badge">{formatEnrolmentStatusDisplay(l)}</span>
             {days !== null && (
-              <span className={`days-badge ${days <= 45 ? 'badge-green' : 'badge-red'}`}>{days}d</span>
+              <span className={`days-badge ${days >= 35 ? 'badge-red' : ''}`}>{days}d</span>
             )}
           </div>
         </td>
       );
     }
     case 'fee': {
+      const adminFee = row.vsi_administrativecostsharingfee ?? 0;
+      const calcFee = row.vsi_calculatedenfee != null ? row.vsi_calculatedenfee + adminFee : null;
       const variance = row.vsi_calculatedenfee != null && row.vsi_variancecalculation != null ? row.vsi_variancecalculation * 100 : null;
       const varianceClass = getVarianceClass(variance);
       const varianceText = formatVariancePercent(variance);
@@ -87,8 +89,8 @@ export function renderCell(
         <td key={key} className="cell-fee">
           <div className="calculated-fee-cell">
             {row.vsi_participantprogramyearid
-              ? <Link className="calculated-fee-value" to={`/calculation/dashboard/${row.vsi_participantprogramyearid}`}>{formatCurrency(row.vsi_calculatedenfee)}</Link>
-              : <span className="calculated-fee-value">{formatCurrency(row.vsi_calculatedenfee)}</span>}
+              ? <Link className="calculated-fee-value" to={`/calculation/dashboard/${row.vsi_participantprogramyearid}`}>{formatCurrency(calcFee)}</Link>
+              : <span className="calculated-fee-value">{formatCurrency(calcFee)}</span>}
             {variance != null ? <span className={`variance-pill ${varianceClass}`}>{varianceText}</span> : null}
           </div>
         </td>

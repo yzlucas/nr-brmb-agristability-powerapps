@@ -7,7 +7,7 @@ export const ALL_COLUMNS: ColumnDef[] = [
   { key: 'year', label: 'Year', icon: 'link', removable: true },
   { key: 'enrolStatus', label: 'Enrolment Status', icon: 'list', removable: true },
   { key: 'taskStatus', label: 'Task Status', icon: 'list', removable: true },
-  { key: 'fee', label: 'Calculated fee', icon: 'number', removable: true },
+  { key: 'fee', label: 'Total Fee', icon: 'number', removable: true },
   { key: 'totalFeesOwedCalculated', label: 'Total Fees Owed', icon: 'number', removable: true },
   { key: 'totalFeesPaid', label: 'Total Fees Paid', icon: 'number', removable: true },
   { key: 'enrolmentFee', label: 'Enrolment Fee', icon: 'number', removable: true },
@@ -95,7 +95,7 @@ export const ADV_FIELD_LABELS: Record<string, string> = {
   enrolStatus: 'Enrol Status',
   pin: 'PIN',
   producer: 'Producer name',
-  fee: 'Calculated fee',
+  fee: 'Total Fee',
   hasPartners: 'Has Partners',
   inCombinedFarm: 'In Combined Farm',
 };

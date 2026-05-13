@@ -62,7 +62,7 @@ const SUPERVISOR_COLUMNS: SupervisorColumnDef[] = [
   { key: 'participant', label: 'Participant' },
   { key: 'taskStatus', label: 'Task Status' },
   { key: 'enrolmentStatus', label: 'Enrolment Status' },
-  { key: 'calculatedFee', label: 'Calculated Fee' },
+  { key: 'calculatedFee', label: 'Total Fee' },
   { key: 'enteredQueue', label: 'Entered Queue' },
   { key: 'workedBy', label: 'Worked By' },
   { key: 'workedOn', label: 'Worked On' },
@@ -223,6 +223,7 @@ export function SupervisorApprovalPage() {
             'vsi_fortyfivedayletterstartdate',
             'vsi_calculatedenfee',
             'vsi_previousyearcalculatedenfee',
+            'vsi_administrativecostsharingfee',
             'vsi_variancecalculation',
             'vsi_taskstatus',
             'modifiedon',
@@ -1113,6 +1114,8 @@ export function SupervisorApprovalPage() {
                   const item = row.item;
                   const itemId = row.itemId;
                   const hasCalculatedFee = item.vsi_calculatedenfee != null;
+                  const adminFee = item.vsi_administrativecostsharingfee ?? 0;
+                  const calcFeeTotal = item.vsi_calculatedenfee != null ? item.vsi_calculatedenfee + adminFee : null;
                   const variance = item.vsi_calculatedenfee != null && item.vsi_variancecalculation != null ? item.vsi_variancecalculation * 100 : null;
                   const workMeta = row.workMeta;
 
@@ -1168,7 +1171,7 @@ export function SupervisorApprovalPage() {
                               <div className="enrol-status-cell">
                                 <span className="enrol-badge">{formatEnrolmentStatusDisplay(statusLabel) || '—'}</span>
                                 {days !== null && (
-                                  <span className={`days-badge ${days <= 45 ? 'badge-green' : 'badge-red'}`}>{days}d</span>
+                                  <span className={`days-badge ${days >= 35 ? 'badge-red' : ''}`}>{days}d</span>
                                 )}
                               </div>
                             </td>
@@ -1179,8 +1182,8 @@ export function SupervisorApprovalPage() {
                             <td key={key}>
                               <span className="sa-fee-cell">
                                 {itemId && hasCalculatedFee
-                                  ? <Link className="sa-fee-amount sa-fee-link" to={`/calculation/supervisor/${itemId}`}>{formatCurrencyOr(item.vsi_calculatedenfee, '—')}</Link>
-                                  : <span className="sa-fee-amount">{formatCurrencyOr(item.vsi_calculatedenfee, '—')}</span>}
+                                  ? <Link className="sa-fee-amount sa-fee-link" to={`/calculation/supervisor/${itemId}`}>{formatCurrencyOr(calcFeeTotal, '—')}</Link>
+                                  : <span className="sa-fee-amount">{formatCurrencyOr(calcFeeTotal, '—')}</span>}
                                 {variance != null ? <VariancePill variance={variance} /> : null}
                               </span>
                             </td>
@@ -1323,13 +1326,13 @@ export function SupervisorApprovalPage() {
                 for (const r of rowsToUpdate) {
                   await Vsi_participantprogramyearsService.update(r.itemId, {
                     'ownerid@odata.bind': `/systemusers(${workerId})`,
-                    vsi_enrolmentstatus: 865520010,
+                    vsi_enrolmentstatus: 865520009,
                     vsi_taskstatus: 865520000,
                   } as unknown as Parameters<typeof Vsi_participantprogramyearsService.update>[1]);
                 }
                 patchEnrolmentCache(rowsToUpdate.map(r => ({ id: r.itemId, fields: {
                   vsi_taskstatus: 865520000 as unknown as import('../generated/models/Vsi_participantprogramyearsModel').Vsi_participantprogramyearsvsi_taskstatus,
-                  vsi_enrolmentstatus: 865520010 as unknown as import('../generated/models/Vsi_participantprogramyearsModel').Vsi_participantprogramyearsvsi_enrolmentstatus,
+                  vsi_enrolmentstatus: 865520009 as unknown as import('../generated/models/Vsi_participantprogramyearsModel').Vsi_participantprogramyearsvsi_enrolmentstatus,
                   '_ownerid_value': workerId,
                 } })));
               } catch (err) {

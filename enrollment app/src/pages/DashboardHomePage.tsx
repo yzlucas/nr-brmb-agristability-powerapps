@@ -281,8 +281,8 @@ export function DashboardHomePage() {
   // Column & sort state
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<SortKey[]>([...DEFAULT_VISIBLE_KEYS]);
   const [columnWidths, setColumnWidths] = useState<Partial<Record<SortKey, number>>>({});
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [sortKey, setSortKey] = useState<SortKey | null>('modifiedOn');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   // Filter state
   const [filters, setFilters] = useState<QuickFilterState>({
@@ -424,6 +424,8 @@ export function DashboardHomePage() {
     if (typeof fetchEnrolments === 'function') fetchEnrolments();
     if (typeof fetchCoreAppId === 'function') fetchCoreAppId();
     reloadViews(false);
+    setSortKey('modifiedOn');
+    setSortDir('desc');
   }, [fetchEnrolments, fetchCoreAppId, reloadViews]);
 
   const handleSelectViewAndClose = useCallback((id: string | null) => {
