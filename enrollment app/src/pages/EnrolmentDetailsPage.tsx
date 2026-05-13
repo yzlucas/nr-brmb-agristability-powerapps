@@ -42,7 +42,7 @@ const DETAIL_SELECT = [
   '_vsi_programyearid_value',
   'vsi_sharepointdocumentfolder',
   'vsi_enrolmentstatus',
-  'vsi_totalfeesowed',
+  'vsi_totalfeesowedcalculated',
   'vsi_totalfeespaid',
   'vsi_enrolmentnoticesentdate',
   'vsi_programyearoptoutdate',
@@ -344,7 +344,7 @@ export function EnrolmentDetailsPage() {
 
             <div className="details-field">
               <span className="details-label">Total Fees Owed</span>
-              <strong className="details-money">{formatCad(record.vsi_totalfeesowed)}</strong>
+              <strong className="details-money">{formatCad(record.vsi_totalfeesowedcalculated)}</strong>
             </div>
 
             <div className="details-field">
@@ -474,3 +474,4 @@ export function EnrolmentDetailsPage() {
     </section>
   );
 }
+

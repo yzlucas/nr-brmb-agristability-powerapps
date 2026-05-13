@@ -14,6 +14,25 @@ export function getEnrolmentStatusLabel(value: unknown): string {
   ] ?? String(value);
 }
 
+const ENROLMENT_STATUS_DISPLAY: Record<string, string> = {
+  Initialized: 'Initialized',
+  UnverifiedENCalculated: 'Unverified EN Calculated',
+  VerifiedENCalculalted: 'Verified EN Calculated',
+  EnrolmentNoticeSent: 'Enrolment Notice Sent',
+  Enrolled_NotPaid: 'Enrolled, Not Paid',
+  Enrolled: 'Enrolled',
+  LateEnrolled: 'Late Enrolled',
+  Ineligible: 'Ineligible',
+  OptedOut: 'Opted Out',
+  ToBeReviewed: 'To Be Reviewed',
+  _45DayLetter: '45 Day Letter',
+  Dormant: 'Dormant',
+};
+
+export function formatEnrolmentStatusDisplay(label: string): string {
+  return ENROLMENT_STATUS_DISPLAY[label] ?? label;
+}
+
 export function getTaskStatusLabel(value: unknown): string {
   if (value == null) return '';
   return Vsi_participantprogramyearsvsi_taskstatus[
@@ -34,24 +53,6 @@ export function taskStatusIcon(label: string): React.ReactNode {
     default:
       return null;
   }
-}
-
-export function enrolmentStatusClass(label: string): string {
-  const map: Record<string, string> = {
-    Enrolled: 'es-enrolled',
-    Enrolled_NotPaid: 'es-notpaid',
-    LateEnrolled: 'es-enrolled',
-    EnrolmentFeesCalculated: 'es-calculated',
-    UpdatedEnrolmentFeesCalculated: 'es-calculated',
-    EnrolmentNoticeSent: 'es-notice',
-    Initialized: 'es-init',
-    Ineligible: 'es-ineligible',
-    OptedOut: 'es-optedout',
-    ToBeReviewed: 'es-review',
-    NotEnoughInformation: 'es-review',
-    Dormant: 'es-dormant',
-  };
-  return map[label] ?? '';
 }
 
 export function formatCurrency(value: unknown): string {
@@ -130,7 +131,7 @@ export function getSortValue(row: Vsi_participantprogramyears, key: SortKey): st
         ?? raw['_ownerid_value@OData.Community.Display.V1.FormattedValue']
         ?? '') as string;
     }
-    case 'totalFeesOwed': return Number(row.vsi_totalfeesowed) || 0;
+    case 'totalFeesOwedCalculated': return Number(row.vsi_totalfeesowedcalculated) || 0;
     case 'totalFeesPaid': return Number(row.vsi_totalfeespaid) || 0;
     case 'enrolmentFee': return Number(row.vsi_enrolmentfee) || 0;
     case 'latePay': return Number(row.vsi_latepaymentfee) || 0;
@@ -144,3 +145,4 @@ export function getSortValue(row: Vsi_participantprogramyears, key: SortKey): st
     default: return '';
   }
 }
+

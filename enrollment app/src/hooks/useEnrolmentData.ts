@@ -104,7 +104,7 @@ export function useEnrolmentData() {
           'vsi_calculatedenfee',
           'vsi_previousyearcalculatedenfee',
           'vsi_enrolmentfeecalculated',
-          'vsi_totalfeesowed',
+          'vsi_totalfeesowedcalculated',
           'vsi_totalfeespaid',
           'vsi_enrolmentfee',
           'vsi_latepaymentfee',
@@ -119,6 +119,7 @@ export function useEnrolmentData() {
           'vsi_broughtforward',
           'vsi_manualreview',
           'vsi_enrolmentnoticesentdate',
+          'vsi_fortyfivedayletterstartdate',
           'vsi_filereceiveddate',
           'vsi_enrolmentfeespaiddate',
           'vsi_prevyearpartnotverified',
@@ -312,21 +313,12 @@ export function useSortedAndFilteredRows(
     return false;
   }, []);
 
-  const isReadyTaskStatus = useCallback((value: unknown): boolean => {
-    if (typeof value === 'number') return value === 865520002;
-    if (typeof value === 'string') {
-      const normalized = value.trim().toLowerCase();
-      return normalized === '865520002' || normalized === 'ready';
-    }
-    return false;
-  }, []);
-
   const isFlaggedByVariance = useCallback((row: Vsi_participantprogramyears): boolean => {
     if (row.vsi_prevyearpartnotverified === true) return true;
     if (row.vsi_calculatedenfee != null && row.vsi_previousyearcalculatedenfee == null) return true;
     const variance = row.vsi_variancecalculation != null ? row.vsi_variancecalculation * 100 : null;
     if (variance == null) return false;
-    return Math.abs(variance) > FLAGGED_VARIANCE_THRESHOLD;
+    return Math.abs(variance) >= FLAGGED_VARIANCE_THRESHOLD;
   }, []);
 
   const hasVarianceAlert = useCallback((row: Vsi_participantprogramyears): boolean => {
@@ -341,13 +333,11 @@ export function useSortedAndFilteredRows(
 
     if (anyFilter) {
       result = result.filter(row => {
-        const isEnCalc = isYesValue(row.vsi_enrolmentfeecalculated);
-        const isReady = isReadyTaskStatus(row.vsi_taskstatus);
-        const matchesVerifiedCalc = isReady && isEnCalc;
-        const matchesUnverifiedCalc = !isReady && isEnCalc;
+        const matchesVerifiedCalc = getEnrolmentStatusLabel(row.vsi_enrolmentstatus) === 'VerifiedENCalculalted';
+        const matchesUnverifiedCalc = getEnrolmentStatusLabel(row.vsi_enrolmentstatus) === 'UnverifiedENCalculated';
         const matchesFlagged = isFlaggedByVariance(row);
         const matchesPartnerships = isYesValue(row.vsi_haspartners) || isYesValue(row.vsi_incombinedfarm);
-        const matchesFortyFiveDayLetter = getEnrolmentStatusLabel(row.vsi_enrolmentstatus) === 'ToBeReviewed';
+        const matchesFortyFiveDayLetter = getEnrolmentStatusLabel(row.vsi_enrolmentstatus) === '_45DayLetter';
         const matchesVarianceAlert = hasVarianceAlert(row);
 
         if (filters.verifiedCalc && !matchesVerifiedCalc) return false;
@@ -402,7 +392,8 @@ export function useSortedAndFilteredRows(
     }
 
     return result;
-  }, [sortedRows, filters, anyFilter, taskStatusFilter, enrolStatusFilter, yearFilter, ownerFilter, taskFilterOp, enrolFilterOp, advFilterNodes, advLogicOp, matchAdvNode, isYesValue, isReadyTaskStatus, isFlaggedByVariance, hasVarianceAlert]);
+  }, [sortedRows, filters, anyFilter, taskStatusFilter, enrolStatusFilter, yearFilter, ownerFilter, taskFilterOp, enrolFilterOp, advFilterNodes, advLogicOp, matchAdvNode, isYesValue, isFlaggedByVariance, hasVarianceAlert]);
 
   return { filteredRows, taskStatusOptions, enrolStatusOptions, yearOptions, ownerOptions };
 }
+

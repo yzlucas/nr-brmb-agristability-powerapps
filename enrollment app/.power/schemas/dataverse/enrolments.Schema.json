@@ -827,23 +827,23 @@
           "required": true,
           "enum": [
             "Initialized",
-            "Enrolment Fees Calculated",
-            "Updated Enrolment Fees Calculated",
+            "Unverified EN Calculated",
             "Enrolment Notice Sent",
+            "Verified EN Calculalted",
             "Enrolled, Not Paid",
             "Enrolled",
             "Late Enrolled",
             "Ineligible",
             "Opted Out",
             "To Be Reviewed",
-            "Not Enough Information",
+            "45 Day Letter",
             "Dormant"
           ],
           "x-ms-enum-values": [
             865520004,
             865520005,
-            865520006,
             865520007,
+            865520006,
             865520008,
             865520000,
             865520011,
@@ -1022,6 +1022,13 @@
           "x-ms-dataverse-attribute": "vsi_fortyfivedaylettersent",
           "x-ms-dataverse-type": "DateTimeType",
           "x-ms-schema-name": "vsi_fortyFiveDayLetterSent"
+        },
+        "vsi_fortyfivedayletterstartdate": {
+          "type": "string",
+          "title": "Forty Five Day Letter Start Date",
+          "x-ms-dataverse-attribute": "vsi_fortyfivedayletterstartdate",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "vsi_FortyFiveDayLetterStartDate"
         },
         "vsi_fullyprovinciallyfunded": {
           "type": "string",

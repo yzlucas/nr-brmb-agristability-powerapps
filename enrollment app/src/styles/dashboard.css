@@ -182,22 +182,37 @@
 /* ── Enrolment status badges ── */
 .enrol-badge {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 4px;
   font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1.5;
   white-space: normal;
 }
-.es-enrolled   { background: #e8f5e9; color: #1b5e20; }
-.es-notpaid    { background: #fff8e1; color: #795548; }
-.es-calculated { background: #e3f2fd; color: #0d47a1; }
-.es-notice     { background: #f3e5f5; color: #6a1b9a; }
-.es-init       { background: #eceff1; color: #37474f; }
-.es-ineligible { background: #fbe9e7; color: #bf360c; }
-.es-optedout   { background: #eceff1; color: #546e7a; }
-.es-review     { background: #fff3e0; color: #e65100; }
-.es-dormant    { background: #eceff1; color: #78909c; }
+
+.enrol-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.days-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.days-badge.badge-green {
+  color: #1f7a3e;
+  background: #e8f4ea;
+}
+
+.days-badge.badge-red {
+  color: #c81e1e;
+  background: #fdecec;
+}
 
 /* Calculated fee */
 .cell-fee {

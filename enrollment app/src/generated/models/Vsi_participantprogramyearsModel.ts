@@ -21,16 +21,16 @@ export const Vsi_participantprogramyearsvsi_enrollmentregionaloffice = {
 export type Vsi_participantprogramyearsvsi_enrollmentregionaloffice = keyof typeof Vsi_participantprogramyearsvsi_enrollmentregionaloffice;
 export const Vsi_participantprogramyearsvsi_enrolmentstatus = {
   865520004: 'Initialized',
-  865520005: 'EnrolmentFeesCalculated',
-  865520006: 'UpdatedEnrolmentFeesCalculated',
+  865520005: 'UnverifiedENCalculated',
   865520007: 'EnrolmentNoticeSent',
+  865520006: 'VerifiedENCalculalted',
   865520008: 'Enrolled_NotPaid',
   865520000: 'Enrolled',
   865520011: 'LateEnrolled',
   865520002: 'Ineligible',
   865520001: 'OptedOut',
   865520009: 'ToBeReviewed',
-  865520010: 'NotEnoughInformation',
+  865520010: '_45DayLetter',
   865520012: 'Dormant'
 } as const;
 export type Vsi_participantprogramyearsvsi_enrolmentstatus = keyof typeof Vsi_participantprogramyearsvsi_enrolmentstatus;
@@ -111,6 +111,7 @@ export interface Vsi_participantprogramyearsBase {
   vsi_filereceiveddate?: string;
   vsi_firstmonthlateinformationfee?: number;
   vsi_fortyfivedaylettersent?: string;
+  vsi_fortyfivedayletterstartdate?: string;
   vsi_fullyprovinciallyfunded?: boolean;
   vsi_generateddate?: string;
   vsi_generatedfromenwscenario: boolean;

@@ -4,6 +4,7 @@ import type { FilterOperator, SortDir, SortKey } from '../types/enrollment';
 import { ALL_COLUMNS } from '../constants/columns';
 import { ColumnHeaderMenu, type ColumnHeaderFilterProps } from './ColumnHeaderMenu';
 import { renderCell } from './renderCell';
+import { formatEnrolmentStatusDisplay } from '../utils/helpers';
 
 type Props = {
   allRowsCount: number;
@@ -111,6 +112,7 @@ export function EnrolmentDataTable({
 
               if (k === 'enrolStatus') {
                 extra.filterOptions = enrolStatusOptions;
+                extra.filterOptionLabels = Object.fromEntries(enrolStatusOptions.map(o => [o, formatEnrolmentStatusDisplay(o)]));
                 extra.selectedFilters = enrolStatusFilter;
                 extra.filterOperator = enrolFilterOp;
                 extra.onFilterChange = onEnrolStatusFilterChange;
