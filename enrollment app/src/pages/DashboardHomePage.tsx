@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
-import { Filter } from 'lucide-react';
+import { useCallback, useMemo, useState, type DragEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { Columns2, Filter, Info } from 'lucide-react';
 
 import type { SortKey, SortDir, FilterOperator, AdvFilterNode, LogicOp, QuickFilterState } from '../types/enrollment';
 import { DEFAULT_VISIBLE_KEYS } from '../constants/columns';
@@ -11,6 +12,7 @@ import { ViewsMenu } from '../components/ViewsMenu';
 import { EditColumnsPanel } from '../components/EditColumnsPanel';
 import { EditFiltersPanel } from '../components/EditFiltersPanel';
 import { BulkNoticesModal } from '../components/BulkNoticesModal';
+import { AssignOwnerModal } from '../components/AssignOwnerModal';
 import { ReferToSupervisorModal } from '../components/ReferToSupervisorModal';
 import { ApproveCalculatedFeesModal } from '../components/ApproveCalculatedFeesModal';
 import { Toast, nextToastId } from '../components/Toast';
@@ -20,262 +22,12 @@ import { EnrolmentQuickFilters } from '../components/EnrolmentQuickFilters';
 import { EnrolmentDataTable } from '../components/EnrolmentDataTable';
 
 import { EnrolmentActionsBar } from '../components/EnrolmentActionsBar';
-import { Office365UsersService } from '../generated/services/Office365UsersService';
-import { SystemusersService } from '../generated/services/SystemusersService';
-import { getClient } from '@microsoft/power-apps/data';
-import { dataSourcesInfo } from '../../.power/schemas/appschemas/dataSourcesInfo';
-import { resolveAuthenticatedEmail, resolveCurrentSystemUser } from '../utils/currentUser';
 
 const PAGE_SIZE = 300;
 
-type ResolvedProfile = {
-  id: string;
-  name: string;
-  email: string;
-  source: string;
-};
-
-type XrmUserSettings = { userId?: string; userName?: string; userPrincipalName?: string };
-type WinWithXrm = { Xrm?: { Utility?: { getGlobalContext?: () => { userSettings?: XrmUserSettings } } } };
-
-function getXrmUserSettings(): XrmUserSettings | undefined {
-  const candidates = [window, window.parent, window.top];
-  for (const w of candidates) {
-    try {
-      if (!w) continue;
-      const settings = (w as unknown as WinWithXrm).Xrm?.Utility?.getGlobalContext?.()?.userSettings;
-      if (settings?.userId || settings?.userName || settings?.userPrincipalName) return settings;
-    } catch {
-      // ignore cross-origin frame access and keep trying
-    }
-  }
-  return undefined;
-}
-
 export function DashboardHomePage() {
   const { rows, setRows, loading, error, avatarUrls, fetchEnrolments, coreAppId, coreBaseUrl, fetchCoreAppId } = useEnrolmentData();
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [profile, setProfile] = useState<ResolvedProfile | null>(null);
 
-  const welcomeName = useMemo(() => {
-    const profileName = profile?.name?.trim();
-    if (profileName) return profileName;
-
-    const xrmSettings = getXrmUserSettings();
-    const xrmName = xrmSettings?.userName?.trim();
-    if (xrmName) return xrmName;
-
-    const emailCandidate = profile?.email?.trim() || xrmSettings?.userPrincipalName?.trim();
-    if (emailCandidate && emailCandidate.includes('@')) {
-      return emailCandidate.split('@')[0].trim();
-    }
-
-    return '';
-  }, [profile]);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadProfile = async () => {
-      setProfileLoading(true);
-      try {
-        // Reuse the same identity resolution path used by approval actions.
-        const currentUser = await resolveCurrentSystemUser();
-        if (active && currentUser.displayName?.trim()) {
-          setProfile({
-            id: currentUser.systemUserId,
-            name: currentUser.displayName,
-            email: currentUser.email ?? '',
-            source: 'resolveCurrentSystemUser',
-          });
-          return;
-        }
-      } catch {
-        // fall through to legacy lookup path below
-      }
-
-      try {
-        const hasText = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
-
-        const pickPayload = (input: unknown): Record<string, unknown> | null => {
-          const queue: unknown[] = [input];
-          const seen = new Set<object>();
-          let fallback: Record<string, unknown> | null = null;
-
-          const profileKeys = new Set([
-            'id', 'Id', 'userid', 'UserId',
-            'displayName', 'DisplayName', 'fullName', 'fullname', 'userName',
-            'mail', 'Mail', 'internalemailaddress', 'internalEmailAddress',
-            'userPrincipalName', 'UserPrincipalName', 'domainname',
-          ]);
-
-          while (queue.length > 0) {
-            const current = queue.shift();
-            if (!current || typeof current !== 'object' || Array.isArray(current)) continue;
-
-            const obj = current as Record<string, unknown>;
-            if (seen.has(obj)) continue;
-            seen.add(obj);
-
-            if (!fallback) fallback = obj;
-
-            const keys = Object.keys(obj);
-            if (keys.some((k) => profileKeys.has(k))) {
-              return obj;
-            }
-
-            queue.push(obj.data);
-            queue.push(obj.value);
-          }
-
-          return fallback;
-        };
-
-        const buildFromPayload = (payload: Record<string, unknown> | null, source: string): ResolvedProfile | null => {
-          if (!payload) return null;
-
-          const id = [payload.id, payload.Id, payload.userid, payload.UserId]
-            .find(hasText);
-          const upn = [payload.userPrincipalName, payload.UserPrincipalName]
-            .find(hasText);
-          const name = [payload.displayName, payload.DisplayName, payload.fullname, payload.fullName, payload.userName]
-            .find(hasText);
-          const email = [payload.mail, payload.Mail, payload.internalemailaddress, payload.internalEmailAddress, upn]
-            .find(hasText);
-
-          if (!id && !name && !email) return null;
-          return {
-            id: id ? id.trim() : (email ? email.trim() : 'N/A'),
-            name: name ? name.trim() : (upn ? upn.trim() : 'N/A'),
-            email: email ? email.trim() : (upn ? upn.trim() : 'N/A'),
-            source,
-          };
-        };
-
-        const fromV2 = async (withSelect: boolean): Promise<ResolvedProfile | null> => {
-          try {
-            const result = withSelect
-              ? await Office365UsersService.MyProfile_V2('id,displayName,mail,userPrincipalName')
-              : await Office365UsersService.MyProfile_V2();
-            const payload = pickPayload(result as unknown);
-            const resolved = buildFromPayload(payload, withSelect ? 'Office365 MyProfile_V2(select)' : 'Office365 MyProfile_V2');
-            return resolved;
-          } catch {
-            return null;
-          }
-        };
-
-        const fromV1 = async (): Promise<ResolvedProfile | null> => {
-          try {
-            const result = await Office365UsersService.MyProfile();
-            const payload = pickPayload(result as unknown);
-            const resolved = buildFromPayload(payload, 'Office365 MyProfile');
-            return resolved;
-          } catch {
-            return null;
-          }
-        };
-
-        const fromWhoAmI = async (): Promise<ResolvedProfile | null> => {
-          try {
-            const client = getClient(dataSourcesInfo);
-            const whoAmIRequest = {
-              dataverseRequest: {
-                action: 'WhoAmI',
-                parameters: {},
-              },
-            } as unknown as Parameters<typeof client.executeAsync>[0];
-
-            const whoAmIResult = await client.executeAsync(whoAmIRequest) as unknown;
-            const whoAmIPayload = pickPayload(whoAmIResult);
-            const rawUserId = whoAmIPayload?.UserId ?? whoAmIPayload?.userid ?? whoAmIPayload?.userId;
-            const userId = hasText(rawUserId) ? rawUserId.replace(/[{}]/g, '').trim() : '';
-            if (!hasText(userId)) return null;
-
-            const sys = await SystemusersService.get(userId, {
-              select: ['fullname', 'internalemailaddress', 'domainname'],
-            });
-            const sysPayload = pickPayload(sys as unknown);
-            const resolved = buildFromPayload({ ...(sysPayload ?? {}), UserId: userId }, 'Dataverse WhoAmI');
-            return resolved;
-          } catch {
-            return null;
-          }
-        };
-
-        const fromAuthenticatedEmail = async (): Promise<ResolvedProfile | null> => {
-          try {
-            const email = await resolveAuthenticatedEmail();
-            if (!email) return null;
-
-            const escaped = email.replace(/'/g, "''");
-            const byEmail = await SystemusersService.getAll({
-              select: ['systemuserid', 'fullname', 'internalemailaddress', 'domainname'],
-              filter: `internalemailaddress eq '${escaped}' and isdisabled eq false`,
-              maxPageSize: 1,
-            });
-
-            const match = byEmail.data?.[0];
-            if (!match) {
-              return {
-                id: email,
-                name: email,
-                email,
-                source: 'Auth email context',
-              };
-            }
-
-            return {
-              id: match.systemuserid || email,
-              name: match.fullname || match.domainname || email,
-              email: match.internalemailaddress || match.domainname || email,
-              source: 'Auth email + systemusers',
-            };
-          } catch {
-            return null;
-          }
-        };
-
-        const fromXrmContext = (): ResolvedProfile | null => {
-          try {
-            const settings = getXrmUserSettings();
-            const userId = settings?.userId?.replace(/[{}]/g, '').trim();
-            const userName = settings?.userName?.trim();
-            const upn = settings?.userPrincipalName?.trim();
-            if (!hasText(userId) && !hasText(userName) && !hasText(upn)) return null;
-
-            return {
-              id: userId || upn || 'N/A',
-              name: userName || upn || 'N/A',
-              email: upn || 'N/A',
-              source: 'Xrm global context',
-            };
-          } catch {
-            return null;
-          }
-        };
-
-        const resolved = (await fromV2(true)) ?? (await fromV2(false)) ?? (await fromV1()) ?? (await fromWhoAmI()) ?? (await fromAuthenticatedEmail()) ?? fromXrmContext();
-        if (!active) return;
-
-        setProfile(resolved);
-      } catch {
-        if (active) {
-          setProfile(null);
-        }
-      } finally {
-        if (active) {
-          setProfileLoading(false);
-        }
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      active = false;
-    };
-  }, []);
   // Refresh handler is defined after useViews so reloadViews is available
 
   // Column & sort state
@@ -311,6 +63,7 @@ export function DashboardHomePage() {
   const [showEditColumns, setShowEditColumns] = useState(false);
   const [showEditFilters, setShowEditFilters] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
   const [showApproveFeesModal, setShowApproveFeesModal] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -356,6 +109,22 @@ export function DashboardHomePage() {
   }, []);
   const setAdvLogicOpAndReset = useCallback((next: LogicOp) => {
     setAdvLogicOp(next);
+    setCurrentPage(1);
+  }, []);
+
+  /** Clear every filter, then optionally apply a single task-status or enrol-status filter. */
+  const applyWorklistFilter = useCallback((
+    type: 'taskStatus' | 'enrolStatus',
+    label: string,
+  ) => {
+    const is45Day = label === '_45DayLetter';
+    setFilters({ verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: is45Day, varianceAlert: false });
+    setSearchQuery('');
+    setTaskStatusFilter(type === 'taskStatus' ? new Set([label]) : new Set());
+    setEnrolStatusFilter(type === 'enrolStatus' ? new Set([label]) : new Set());
+    setYearFilter(new Set());
+    setOwnerFilter(new Set());
+    setAdvFilterNodes([]);
     setCurrentPage(1);
   }, []);
 
@@ -447,7 +216,7 @@ export function DashboardHomePage() {
   const { filteredRows, taskStatusOptions, enrolStatusOptions, yearOptions, ownerOptions } = useSortedAndFilteredRows(
     rows, sortKey, sortDir, filters,
     taskStatusFilter, enrolStatusFilter, yearFilter, ownerFilter, taskFilterOp, enrolFilterOp,
-    advFilterNodes, advLogicOp, profile?.name ?? undefined,
+    advFilterNodes, advLogicOp, undefined,
   );
 
   const searchedRows = useMemo(() => {
@@ -527,37 +296,20 @@ export function DashboardHomePage() {
   return (
     <>
     <div className="enrolment-wrapper">
-      <div
-        className="dashboard-welcome"
-        aria-label="Welcome message"
-        title={profileLoading ? 'Loading profile...' : undefined}
-      >
-        {`Welcome${welcomeName ? ` ${welcomeName}` : ''}`}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+        <ViewsMenu
+          views={savedViews}
+          activeViewId={activeViewId}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onSelectView={handleSelectViewAndClose}
+          onSaveAsNew={handleSaveAsNew}
+          onSaveCurrentView={handleSaveCurrentView}
+          onResetDefault={handleResetDefaultAndClose}
+          onDeleteView={handleDeleteViewAndClose}
+          onRenameView={handleRenameView}
+          viewsLoading={viewsLoading}
+        />
       </div>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginBottom: 4 }}>
-        <button type="button" className="dash-toolbar-btn" onClick={() => setShowEditColumns(true)}>
-          <span className="ef-edit-icon">&#x1F5C2;</span> Edit columns
-        </button>
-        <button type="button" className="dash-toolbar-btn" onClick={() => setShowEditFilters(true)}>
-          <span className="ef-edit-icon"><Filter size={13} /></span> Edit filters
-        </button>
-        <button type="button" className="dash-toolbar-btn" onClick={handleRefresh} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
-      </div>
-      <ViewsMenu
-        views={savedViews}
-        activeViewId={activeViewId}
-        hasUnsavedChanges={hasUnsavedChanges}
-        onSelectView={handleSelectViewAndClose}
-        onSaveAsNew={handleSaveAsNew}
-        onSaveCurrentView={handleSaveCurrentView}
-        onResetDefault={handleResetDefaultAndClose}
-        onDeleteView={handleDeleteViewAndClose}
-        onRenameView={handleRenameView}
-        viewsLoading={viewsLoading}
-      />
       {saveError && <p className="enrolment-error">{saveError}</p>}
 
       {loading && <p className="enrolment-loading">Loading…</p>}
@@ -573,21 +325,55 @@ export function DashboardHomePage() {
                 setCurrentPage(1);
               }}
             />
-            <EnrolmentActionsBar
-              hasSelection={selectedIds.size > 0}
-              onOpenBulkNotices={() => setShowBulkModal(true)}
-              onOpenReferToSupervisor={() => setShowSupervisorModal(true)}
-              onOpenApproveCalculatedFees={() => setShowApproveFeesModal(true)}
-            />
+            <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+              <button type="button" className="sa-filter-btn" onClick={() => setShowEditColumns(true)}>
+                <Columns2 size={14} /> Edit columns
+              </button>
+              <button type="button" className="sa-filter-btn" onClick={() => setShowEditFilters(true)}>
+                <Filter size={14} /> Edit filters
+              </button>
+              <button type="button" className="sa-filter-btn" onClick={handleRefresh} disabled={loading}>
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
           </div>
 
-          <div className="filters-and-actions-row">
-            <EnrolmentQuickFilters
-              filters={filters}
-              onToggleFilter={toggleFilter}
-              activeAdvancedCount={countActiveNodes(advFilterNodes)}
-            />
+          <div className="worklist-box">
+            <div className="worklist-item">
+              <Info size={15} className="worklist-icon" />
+              <button className="worklist-link" onClick={() => applyWorklistFilter('enrolStatus', 'Initialized')}>
+                New Participants: <strong>{rows.filter(r => r.vsi_enrolmentstatus === 865520004).length}</strong>
+              </button>
+            </div>
+            <div className="worklist-item">
+              <Info size={15} className="worklist-icon" />
+              <Link to="/supervisor-approval" className="worklist-link">
+                Pending supervisor&rsquo;s approval: <strong>{rows.filter(r => r.vsi_taskstatus === 865520001).length}</strong>
+              </Link>
+            </div>
+            <div className="worklist-item">
+              <Info size={15} className="worklist-icon" />
+              <button className="worklist-link" onClick={() => applyWorklistFilter('enrolStatus', '_45DayLetter')}>
+                45 day letters: <strong>{rows.filter(r => r.vsi_enrolmentstatus === 865520010).length}</strong>
+              </button>
+            </div>
           </div>
+
+          <div className="sa-card">
+            <div className="sa-card-header">
+              <EnrolmentQuickFilters
+                filters={filters}
+                onToggleFilter={toggleFilter}
+                activeAdvancedCount={countActiveNodes(advFilterNodes)}
+              />
+              <EnrolmentActionsBar
+                hasSelection={selectedIds.size > 0}
+                onOpenBulkNotices={() => setShowBulkModal(true)}
+                onOpenAssign={() => setShowAssignModal(true)}
+                onOpenReferToSupervisor={() => setShowSupervisorModal(true)}
+                onOpenApproveCalculatedFees={() => setShowApproveFeesModal(true)}
+              />
+            </div>
 
           <EnrolmentDataTable
             allRowsCount={rows.length}
@@ -685,6 +471,7 @@ export function DashboardHomePage() {
               </button>
             </div>
           </div>
+          </div>{/* /sa-card */}
 
           {showApproveFeesModal && (
             <ApproveCalculatedFeesModal
@@ -737,6 +524,24 @@ export function DashboardHomePage() {
           selectedIds={selectedIds}
           rows={rows}
           onClose={() => setShowBulkModal(false)}
+        />
+      )}
+      {/* Assign modal — logic to be implemented */}
+      {showAssignModal && (
+        <AssignOwnerModal
+          selectedIds={selectedIds}
+          rows={rows}
+          onClose={() => setShowAssignModal(false)}
+          onComplete={(assignedIds, ownerName) => {
+            setRows(prev => prev.map(r =>
+              assignedIds.includes(r.vsi_participantprogramyearid!)
+                ? { ...r, owneridname: ownerName }
+                : r
+            ));
+            setShowAssignModal(false);
+            setSelectedIds(new Set());
+            addToast(`${assignedIds.length} enrolment${assignedIds.length === 1 ? '' : 's'} assigned to ${ownerName}.`);
+          }}
         />
       )}
       {showSupervisorModal && (
