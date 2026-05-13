@@ -64,7 +64,19 @@ export function renderCell(
     }
     case 'enrolStatus': {
       const l = getEnrolmentStatusLabel(row.vsi_enrolmentstatus);
-      return <td key={key}><span className="enrol-badge">{formatEnrolmentStatusDisplay(l)}</span></td>;
+      const is45Day = l === '_45DayLetter';
+      const startDate = is45Day ? row.vsi_fortyfivedayletterstartdate : undefined;
+      const days = startDate ? Math.floor(((Date.now() - 7 * 60 * 60 * 1000) - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) : null;
+      return (
+        <td key={key}>
+          <div className="enrol-status-cell">
+            <span className="enrol-badge">{formatEnrolmentStatusDisplay(l)}</span>
+            {days !== null && (
+              <span className={`days-badge ${days <= 45 ? 'badge-green' : 'badge-red'}`}>{days}d</span>
+            )}
+          </div>
+        </td>
+      );
     }
     case 'fee': {
       const variance = row.vsi_calculatedenfee != null && row.vsi_variancecalculation != null ? row.vsi_variancecalculation * 100 : null;

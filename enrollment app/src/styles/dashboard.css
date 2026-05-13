@@ -186,6 +186,34 @@
   white-space: normal;
 }
 
+.enrol-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.days-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.days-badge.badge-green {
+  color: #1f7a3e;
+  background: #e8f4ea;
+}
+
+.days-badge.badge-red {
+  color: #c81e1e;
+  background: #fdecec;
+}
+
 /* Calculated fee */
 .cell-fee {
   font-variant-numeric: tabular-nums;

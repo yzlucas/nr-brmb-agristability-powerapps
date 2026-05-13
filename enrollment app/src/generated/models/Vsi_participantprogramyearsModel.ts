@@ -111,6 +111,7 @@ export interface Vsi_participantprogramyearsBase {
   vsi_filereceiveddate?: string;
   vsi_firstmonthlateinformationfee?: number;
   vsi_fortyfivedaylettersent?: string;
+  vsi_fortyfivedayletterstartdate?: string;
   vsi_fullyprovinciallyfunded?: boolean;
   vsi_generateddate?: string;
   vsi_generatedfromenwscenario: boolean;
