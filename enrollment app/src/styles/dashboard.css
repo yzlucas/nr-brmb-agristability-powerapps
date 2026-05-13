@@ -17,6 +17,43 @@
   color: #1f2d3d;
 }
 
+/* ── Worklist quick-links box ── */
+.worklist-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+  background: #ddeaf8;
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  width: fit-content;
+}
+.worklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+}
+.worklist-icon {
+  color: #2b6cb0;
+  flex-shrink: 0;
+}
+.worklist-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: #1a4f8b;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+.worklist-link:hover {
+  color: #0d3468;
+}
+
 .enrolment-wrapper h2 {
   margin-bottom: 0.35rem;
   font-size: 1.35rem;
@@ -29,6 +66,15 @@
 .enrolment-error {
   color: #d32f2f;
 }
+/* Make the sa-card fill remaining height in the dashboard flex column */
+.enrolment-wrapper .sa-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .enrolment-table-container {
   overflow-x: auto;
   overflow-y: auto;
@@ -367,24 +413,27 @@
 .dash-toolbar-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 6px 16px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: #f7f7f7;
-  color: #333;
+  gap: 0.35rem;
+  border: 1.5px solid #d0d6dd;
+  background: #fff;
+  color: #334155;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
   font-size: 0.84rem;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .dash-toolbar-btn:hover:not(:disabled) {
-  background: #ebebeb;
+  border-color: #1d6ee6;
+  color: #1d6ee6;
+  background: #f5faff;
 }
 .dash-toolbar-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+  opacity: 0.5;
+  cursor: default;
 }
 
 .dash-btn-secondary {
