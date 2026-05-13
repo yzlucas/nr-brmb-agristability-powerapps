@@ -103,6 +103,7 @@ export function useEnrolmentData() {
           'vsi_taskstatus',
           'vsi_calculatedenfee',
           'vsi_previousyearcalculatedenfee',
+          'vsi_administrativecostsharingfee',
           'vsi_enrolmentfeecalculated',
           'vsi_totalfeesowedcalculated',
           'vsi_totalfeespaid',
