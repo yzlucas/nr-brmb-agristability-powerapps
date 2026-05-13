@@ -220,6 +220,7 @@ export function SupervisorApprovalPage() {
             'vsi_name',
             '_vsi_participantid_value',
             'vsi_enrolmentstatus',
+            'vsi_fortyfivedayletterstartdate',
             'vsi_calculatedenfee',
             'vsi_previousyearcalculatedenfee',
             'vsi_variancecalculation',
@@ -450,12 +451,16 @@ export function SupervisorApprovalPage() {
     return nextUser;
   };
 
+  const APPROVABLE_STATUSES = new Set([865520005, 865520006]); // UnverifiedENCalculated, VerifiedENCalculalted
+
   const canApproveRow = (row: SupervisorRowView): boolean => {
+    // Must have an approvable enrolment status
+    if (!APPROVABLE_STATUSES.has(row.item.vsi_enrolmentstatus as unknown as number)) return false;
     // Must have a calculated fee (not null)
     if (row.calculatedFeeValue == null) return false;
-    const workerId = normalizeGuid(row.workMeta?.workerId);
-    if (!workerId) return true;
+    // Must be assigned to the current user
     if (!currentUser?.systemUserId) return false;
+    const workerId = normalizeGuid(row.workMeta?.workerId);
     return workerId === normalizeGuid(currentUser.systemUserId);
   };
 
@@ -463,17 +468,26 @@ export function SupervisorApprovalPage() {
     const blockedRows = rows.filter(row => !canApproveRow(row));
     if (blockedRows.length === 0) return null;
 
+    // Check if any have an invalid enrolment status
+    const invalidStatus = blockedRows.find(row => !APPROVABLE_STATUSES.has(row.item.vsi_enrolmentstatus as unknown as number));
+    if (invalidStatus) {
+      return `${invalidStatus.enrolmentName} cannot be approved because its enrolment status is not Verified EN Calculated or Unverified EN Calculated.`;
+    }
+
     // Check if any are missing calculated fee
     const missingFee = blockedRows.find(row => row.calculatedFeeValue == null);
     if (missingFee) {
       return `${missingFee.enrolmentName} cannot be approved because it does not have a calculated fee.`;
     }
 
-    if (blockedRows.length === 1) {
-      return `${blockedRows[0].enrolmentName} is assigned to ${blockedRows[0].workedBy}. You can only approve items worked by you or with a blank Worked By value, and only if a calculated fee exists.`;
+    // Check if any are not picked by the current user
+    const notPicked = blockedRows.find(row => normalizeGuid(row.workMeta?.workerId) !== normalizeGuid(currentUser?.systemUserId));
+    if (notPicked) {
+      const assignedTo = notPicked.workMeta?.workerId ? `assigned to ${notPicked.workedBy}` : 'not picked';
+      return `${notPicked.enrolmentName} cannot be approved because it is ${assignedTo}. An enrolment must be picked by you before it can be approved.`;
     }
 
-    return 'Some selected enrolments are assigned to another worker or do not have a calculated fee. You can only approve items worked by you or with a blank Worked By value, and only if a calculated fee exists.';
+    return 'Some selected enrolments cannot be approved. Enrolments must have a status of Verified EN Calculated or Unverified EN Calculated, have a calculated fee, and be picked by you.';
   };
 
   const bulkApprovalBlockedTooltip = 'One or more selected approvals is being worked on by another user';
@@ -946,7 +960,15 @@ export function SupervisorApprovalPage() {
                 type="button"
                 className="sa-btn-primary sa-bulk-btn"
                 disabled={selectedCount === 0 || approvingBulk}
-                onClick={() => setShowApproveConfirm(true)}
+                onClick={() => {
+                  const rowsToApprove = allRows.filter(row => row.itemId != null && selectedIds.has(row.itemId));
+                  const ownershipError = getApprovalOwnershipError(rowsToApprove);
+                  if (ownershipError) {
+                    setApprovalErrorModal(ownershipError);
+                    return;
+                  }
+                  setShowApproveConfirm(true);
+                }}
               >
                 {approvingBulk ? 'Approving...' : <><CircleCheck size={15} /> Approve</>}
               </button>
@@ -978,18 +1000,6 @@ export function SupervisorApprovalPage() {
               loading={approvingBulk}
               onConfirm={async () => {
                 setShowApproveConfirm(false);
-                const rowsToApprove = allRows.filter(row => row.itemId != null && selectedIds.has(row.itemId));
-                const blockedRows = rowsToApprove.filter(row => !canApproveRow(row));
-                if (blockedRows.length > 0) {
-                  let msg = '';
-                  if (blockedRows.length === 1) {
-                    msg = `${blockedRows[0].enrolmentName} cannot be approved. Only enrolments with status Ready and a calculated fee, assigned to you or with a blank Worked By value, can be approved.`;
-                  } else {
-                    msg = 'Only enrolments with status Ready and a calculated fee, assigned to you or with a blank Worked By value, can be approved. Please adjust your selection.';
-                  }
-                  setApprovalErrorModal(msg);
-                  return;
-                }
                 await handleApproveSelected();
               }}
               onCancel={() => setShowApproveConfirm(false)}
@@ -1150,9 +1160,17 @@ export function SupervisorApprovalPage() {
                         }
                         if (key === 'enrolmentStatus') {
                           const statusLabel = getEnrolmentStatusLabel(item.vsi_enrolmentstatus);
+                          const is45Day = statusLabel === '_45DayLetter';
+                          const startDate = is45Day ? item.vsi_fortyfivedayletterstartdate : undefined;
+                          const days = startDate ? Math.floor(((Date.now() - 7 * 60 * 60 * 1000) - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) : null;
                           return (
                             <td key={key}>
-                              <span className="enrol-badge">{formatEnrolmentStatusDisplay(statusLabel) || '—'}</span>
+                              <div className="enrol-status-cell">
+                                <span className="enrol-badge">{formatEnrolmentStatusDisplay(statusLabel) || '—'}</span>
+                                {days !== null && (
+                                  <span className={`days-badge ${days <= 45 ? 'badge-green' : 'badge-red'}`}>{days}d</span>
+                                )}
+                              </div>
                             </td>
                           );
                         }

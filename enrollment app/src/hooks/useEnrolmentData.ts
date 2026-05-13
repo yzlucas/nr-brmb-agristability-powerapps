@@ -119,6 +119,7 @@ export function useEnrolmentData() {
           'vsi_broughtforward',
           'vsi_manualreview',
           'vsi_enrolmentnoticesentdate',
+          'vsi_fortyfivedayletterstartdate',
           'vsi_filereceiveddate',
           'vsi_enrolmentfeespaiddate',
           'vsi_prevyearpartnotverified',
@@ -317,7 +318,7 @@ export function useSortedAndFilteredRows(
     if (row.vsi_calculatedenfee != null && row.vsi_previousyearcalculatedenfee == null) return true;
     const variance = row.vsi_variancecalculation != null ? row.vsi_variancecalculation * 100 : null;
     if (variance == null) return false;
-    return Math.abs(variance) > FLAGGED_VARIANCE_THRESHOLD;
+    return Math.abs(variance) >= FLAGGED_VARIANCE_THRESHOLD;
   }, []);
 
   const hasVarianceAlert = useCallback((row: Vsi_participantprogramyears): boolean => {

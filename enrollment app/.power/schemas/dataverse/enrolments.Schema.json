@@ -1023,6 +1023,13 @@
           "x-ms-dataverse-type": "DateTimeType",
           "x-ms-schema-name": "vsi_fortyFiveDayLetterSent"
         },
+        "vsi_fortyfivedayletterstartdate": {
+          "type": "string",
+          "title": "Forty Five Day Letter Start Date",
+          "x-ms-dataverse-attribute": "vsi_fortyfivedayletterstartdate",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "vsi_FortyFiveDayLetterStartDate"
+        },
         "vsi_fullyprovinciallyfunded": {
           "type": "string",
           "title": "Late Participant",
