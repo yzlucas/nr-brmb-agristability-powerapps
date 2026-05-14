@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { ClipboardCheck, Home, Menu } from 'lucide-react';
 
 import { DashboardHomePage } from './pages/DashboardHomePage';
@@ -97,11 +97,11 @@ function AppShell() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <RoleProvider>
         <AppShell />
       </RoleProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
