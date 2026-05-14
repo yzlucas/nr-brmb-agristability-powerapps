@@ -7,10 +7,12 @@ export function BulkNoticesModal({
   selectedIds,
   rows,
   onClose,
+  onSuccess,
 }: {
   selectedIds: Set<string>;
   rows: Vsi_participantprogramyears[];
   onClose: () => void;
+  onSuccess?: (message: string) => void;
 }) {
   const [bulkSentDate, setBulkSentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [bulkFeeDate, setBulkFeeDate] = useState(() => {
@@ -60,6 +62,7 @@ export function BulkNoticesModal({
                   '2024-10-01'
                 );
                 setBulkResult(result);
+                onSuccess?.(`${enrolmentIds.length} enrolment notice${enrolmentIds.length === 1 ? '' : 's'} generated successfully.`);
               } catch (err) {
                 setBulkError(err instanceof Error ? err.message : 'Workflow failed');
               } finally {

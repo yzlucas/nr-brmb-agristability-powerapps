@@ -43,7 +43,6 @@ export function DashboardHomePage() {
     flagged: false,
     partnerships: false,
     fortyFiveDayLetter: false,
-    varianceAlert: false,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<Set<string>>(new Set());
@@ -524,6 +523,7 @@ export function DashboardHomePage() {
           selectedIds={selectedIds}
           rows={rows}
           onClose={() => setShowBulkModal(false)}
+          onSuccess={(message) => addToast(message)}
         />
       )}
       {/* Assign modal — logic to be implemented */}

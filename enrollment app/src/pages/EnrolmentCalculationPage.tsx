@@ -1,14 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Send } from 'lucide-react';
+import { CircleCheck, RefreshCw, Send } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import { Link, useParams } from 'react-router-dom';
+import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
+import { ConfirmActionModal } from '../components/ConfirmActionModal';
+import { ReferToSupervisorModal } from '../components/ReferToSupervisorModal';
+import { patchEnrolmentCache } from '../hooks/useEnrolmentData';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import { MicrosoftDataverseService } from '../generated/services/MicrosoftDataverseService';
+import { QueueitemsService } from '../generated/services/QueueitemsService';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
+import { resolveCurrentSystemUser } from '../utils/currentUser';
 import { calculateVariance, formatCurrencyOr, formatVariancePercent, getTaskStatusLabel } from '../utils/helpers';
 
 const DATAVERSE_ORG_URL = 'https://aff-brmb-crm-dev.crm3.dynamics.com/';
 const BENEFIT_MARGIN_COUNT = 5;
+const APPROVABLE_STATUSES = new Set([865520005, 865520006]);
+
+type CurrentUser = {
+  systemUserId: string;
+  displayName: string;
+};
+
+type QueueWorkMeta = {
+  queueitemId?: string;
+  workerId?: string;
+  workedBy: string;
+};
 
 type XrmWebApiHost = {
   Xrm?: {
@@ -32,6 +50,16 @@ const getStringField = (record: unknown, field: string): string => {
 
   return '';
 };
+
+function normalizeGuid(value?: string | null): string {
+  return (value ?? '').replace(/[{}]/g, '').trim().toLowerCase();
+}
+
+function getFormattedValue(record: unknown, field: string): string | undefined {
+  if (!record || typeof record !== 'object') return undefined;
+  const value = (record as Record<string, unknown>)[`${field}@OData.Community.Display.V1.FormattedValue`];
+  return typeof value === 'string' ? value : undefined;
+}
 
 async function getAccountFromXrm(accountId: string): Promise<Record<string, unknown> | null> {
   const candidates = [window, window.parent, window.top];
@@ -93,6 +121,47 @@ function getBooleanText(value: unknown): string {
   return '-';
 }
 
+async function getActiveQueueWorkMeta(enrolmentId: string): Promise<QueueWorkMeta | null> {
+  const queueitemResult = await QueueitemsService.getAll({
+    filter: `objectid_vsi_participantprogramyear/vsi_participantprogramyearid eq '${enrolmentId}' and statecode eq 0`,
+    select: ['queueitemid', '_workerid_value', 'workeridmodifiedon', '_queueid_value'],
+    maxPageSize: 1,
+  });
+
+  const queueItem = queueitemResult.data?.[0];
+  if (!queueItem) return null;
+
+  return {
+    queueitemId: queueItem.queueitemid,
+    workerId: queueItem._workerid_value,
+    workedBy: getFormattedValue(queueItem, '_workerid_value') ?? '-',
+  };
+}
+
+function getApprovalError(
+  record: Vsi_participantprogramyears,
+  workMeta: QueueWorkMeta | null,
+  currentUser: CurrentUser,
+): string | null {
+  const enrolmentName = record.vsi_name ?? 'This enrolment';
+
+  if (!APPROVABLE_STATUSES.has(record.vsi_enrolmentstatus as unknown as number)) {
+    return `${enrolmentName} cannot be approved because its enrolment status is not Verified EN Calculated or Unverified EN Calculated.`;
+  }
+
+  if (record.vsi_calculatedenfee == null) {
+    return `${enrolmentName} cannot be approved because it does not have a calculated fee.`;
+  }
+
+  const workerId = normalizeGuid(workMeta?.workerId);
+  if (workerId !== normalizeGuid(currentUser.systemUserId)) {
+    const assignedTo = workMeta?.workerId ? `assigned to ${workMeta.workedBy}` : 'not picked';
+    return `${enrolmentName} cannot be approved because it is ${assignedTo}. An enrolment must be picked by you before it can be approved.`;
+  }
+
+  return null;
+}
+
 export function EnrolmentCalculationPage() {
   const { enrolmentId, source } = useParams<{ enrolmentId: string; source: string }>();
   const backTo = source === 'supervisor' ? '/supervisor-approval' : '/dashboard-home';
@@ -102,6 +171,13 @@ export function EnrolmentCalculationPage() {
   const [participantPinLoading, setParticipantPinLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [showSupervisorModal, setShowSupervisorModal] = useState(false);
+  const [queueWorkMeta, setQueueWorkMeta] = useState<QueueWorkMeta | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -119,6 +195,7 @@ export function EnrolmentCalculationPage() {
           select: [
             'vsi_name',
             'vsi_taskstatus',
+            'vsi_enrolmentstatus',
             'vsi_calculatedenfee',
             'vsi_previousyearcalculatedenfee',
             'modifiedon',
@@ -155,6 +232,13 @@ export function EnrolmentCalculationPage() {
         }
 
         setRecord(result.data);
+        setQueueWorkMeta(null);
+        try {
+          const workMeta = await getActiveQueueWorkMeta(result.data.vsi_participantprogramyearid);
+          if (!cancelled) setQueueWorkMeta(workMeta);
+        } catch {
+          if (!cancelled) setQueueWorkMeta(null);
+        }
 
         const participantId = result.data._vsi_participantid_value?.replace(/[{}]/g, '');
         setParticipantPin('');
@@ -179,7 +263,7 @@ export function EnrolmentCalculationPage() {
     return () => {
       cancelled = true;
     };
-  }, [enrolmentId]);
+  }, [enrolmentId, refreshKey]);
 
   const variance = useMemo(() => {
     return calculateVariance(record?.vsi_calculatedenfee, record?.vsi_previousyearcalculatedenfee);
@@ -213,6 +297,81 @@ export function EnrolmentCalculationPage() {
     });
   }, [benefitMarginYears, record]);
 
+  const resolveUser = async (): Promise<CurrentUser> => {
+    if (currentUser) return currentUser;
+    const resolved = await resolveCurrentSystemUser();
+    const nextUser = {
+      systemUserId: resolved.systemUserId,
+      displayName: resolved.displayName,
+    };
+    setCurrentUser(nextUser);
+    return nextUser;
+  };
+
+  const resolveWorkMeta = async (): Promise<QueueWorkMeta | null> => {
+    if (!enrolmentId) return queueWorkMeta;
+    const workMeta = queueWorkMeta ?? await getActiveQueueWorkMeta(enrolmentId);
+    setQueueWorkMeta(workMeta);
+    return workMeta;
+  };
+
+  const handleApproveClick = async () => {
+    if (!record) return;
+
+    try {
+      const [user, workMeta] = await Promise.all([resolveUser(), resolveWorkMeta()]);
+      const approvalError = getApprovalError(record, workMeta, user);
+      if (approvalError) {
+        setApprovalErrorModal(approvalError);
+        return;
+      }
+
+      setShowApproveConfirm(true);
+    } catch (err) {
+      setApprovalErrorModal(err instanceof Error ? err.message : 'Unable to validate approval.');
+    }
+  };
+
+  const handleApproveConfirm = async () => {
+    if (!record || !enrolmentId) return;
+
+    setApproving(true);
+    setError(null);
+    try {
+      const [user, workMeta] = await Promise.all([resolveUser(), resolveWorkMeta()]);
+      const approvalError = getApprovalError(record, workMeta, user);
+      if (approvalError) {
+        setShowApproveConfirm(false);
+        setApprovalErrorModal(approvalError);
+        return;
+      }
+
+      const statusUpdateResult = await Vsi_participantprogramyearsService.update(enrolmentId, {
+        vsi_taskstatus: 865520003,
+      });
+      if (!statusUpdateResult.success) {
+        throw new Error(statusUpdateResult.error?.message ?? `Failed to set Approved status for ${enrolmentId}.`);
+      }
+
+      if (workMeta?.queueitemId) {
+        await QueueitemsService.delete(workMeta.queueitemId);
+      }
+
+      const approvedFields: Partial<Vsi_participantprogramyears> = {
+        vsi_taskstatus: 865520003 as unknown as Vsi_participantprogramyears['vsi_taskstatus'],
+      };
+      patchEnrolmentCache([{ id: enrolmentId, fields: approvedFields }]);
+      setRecord(prev => prev ? { ...prev, ...approvedFields } : prev);
+      setQueueWorkMeta(null);
+      setShowApproveConfirm(false);
+      setRefreshKey(prev => prev + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Approve failed.');
+    } finally {
+      setApproving(false);
+    }
+  };
+
   return (
     <section className="page-card calc-page">
       <div className="calc-record-header">
@@ -223,9 +382,32 @@ export function EnrolmentCalculationPage() {
           <h1 className="calc-participant-name">{participantName || (loading ? 'Loading...' : '-')}</h1>
           <div className="calc-primary-actions">
             <button className="calc-outline-btn" type="button">Send 45-Day Letter</button>
-            <button className="calc-outline-btn" type="button">
+            <button
+              className="calc-outline-btn"
+              type="button"
+              onClick={() => setRefreshKey(prev => prev + 1)}
+              disabled={loading}
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              Refresh
+            </button>
+            <button
+              className="calc-outline-btn"
+              type="button"
+              onClick={() => setShowSupervisorModal(true)}
+              disabled={!record}
+            >
               <Send size={14} aria-hidden="true" />
               Refer to Supervisor
+            </button>
+            <button
+              className="calc-outline-btn"
+              type="button"
+              onClick={() => void handleApproveClick()}
+              disabled={!record || approving}
+            >
+              <CircleCheck size={14} aria-hidden="true" />
+              {approving ? 'Approving...' : 'Approve'}
             </button>
           </div>
         </div>
@@ -329,6 +511,34 @@ export function EnrolmentCalculationPage() {
       <div className="calc-links">
         <Link to={backTo}>{backLabel}</Link>
       </div>
+
+      {showSupervisorModal && record && (
+        <ReferToSupervisorModal
+          selectedIds={new Set([record.vsi_participantprogramyearid])}
+          rows={[record]}
+          onClose={() => setShowSupervisorModal(false)}
+          onComplete={() => {
+            setRecord(prev => prev ? { ...prev, vsi_taskstatus: 865520001 } : prev);
+            setRefreshKey(prev => prev + 1);
+          }}
+          onError={(message) => setError(message)}
+        />
+      )}
+      {approvalErrorModal && (
+        <ApprovalErrorModal message={approvalErrorModal} onClose={() => setApprovalErrorModal(null)} />
+      )}
+      {showApproveConfirm && record && (
+        <ConfirmActionModal
+          title="Confirm Approve Enrolments"
+          message="Are you sure you want to approve the selected 1 enrolment?"
+          enrolments={[{ id: record.vsi_participantprogramyearid, name: record.vsi_name ?? '' }]}
+          confirmLabel="Approve"
+          cancelLabel="Cancel"
+          loading={approving}
+          onConfirm={() => void handleApproveConfirm()}
+          onCancel={() => setShowApproveConfirm(false)}
+        />
+      )}
     </section>
   );
 }
