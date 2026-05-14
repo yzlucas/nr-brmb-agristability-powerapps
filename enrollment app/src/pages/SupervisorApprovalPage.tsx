@@ -3,10 +3,12 @@ import { patchEnrolmentCache } from '../hooks/useEnrolmentData';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { Filter, Calculator, ClipboardList, LogOut, UserPlus, CircleCheck, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useRole } from '../context/RoleContext';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import { Vsi_participantprogramyearsvsi_enrolmentstatus } from '../generated/models/Vsi_participantprogramyearsModel';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
 import { QueueitemsService } from '../generated/services/QueueitemsService';
+import { QueuemembershipsService } from '../generated/services/QueuemembershipsService';
 import { QueuesService } from '../generated/services/QueuesService';
 import { Office365UsersService } from '../generated/services/Office365UsersService';
 import { ColumnHeaderMenu } from '../components/ColumnHeaderMenu';
@@ -36,6 +38,23 @@ let saItemsCache: Vsi_participantprogramyears[] | null = null;
 let saQueueWorkCache: Record<string, QueueWorkMeta> | null = null;
 let saSupervisorQueueIdsCache: Set<string> | null = null;
 let saWorkerAvatarUrlsCache: Record<string, string> | null = null;
+
+// Remove items from the SA cache by enrolment ID (called by other pages after approval).
+export function removeSaItemsFromCache(ids: string[]): void {
+  if (!saItemsCache) return;
+  const normalizedIds = new Set(ids.map(id => id.replace(/[{}]/g, '').toLowerCase()));
+  saItemsCache = saItemsCache.filter(
+    item => !normalizedIds.has((item.vsi_participantprogramyearid ?? '').replace(/[{}]/g, '').toLowerCase())
+  );
+}
+
+// Clear all SA caches so the next mount triggers a full reload (e.g. after referring items to supervisor).
+export function clearSaCache(): void {
+  saItemsCache = null;
+  saQueueWorkCache = null;
+  saSupervisorQueueIdsCache = null;
+  saWorkerAvatarUrlsCache = null;
+}
 
 type QueueWorkMeta = {
   workedBy: string;
@@ -170,6 +189,11 @@ export function SupervisorApprovalPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [manualErrorModal, setManualErrorModal] = useState<string | null>(null);
+  const [pickReleaseErrorModal, setPickReleaseErrorModal] = useState<string | null>(null);
+  const { activeRole } = useRole();
+
+  // Roles that should be treated as non-members of the Supervisor Approval Queue
+  const simulateNonMember = activeRole === 'ENAdmin' || activeRole === 'Verifier';
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [showManualConfirm, setShowManualConfirm] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -494,15 +518,17 @@ export function SupervisorApprovalPage() {
   const bulkApprovalBlockedTooltip = 'One or more selected approvals is being worked on by another user';
 
   const updateQueueItemWorker = async (queueItemId: string, systemUserId: string | null): Promise<void> => {
-    const bindingValue = systemUserId ? `/systemusers(${systemUserId})` : null;
+    // To set a lookup, use @odata.bind with the navigation property name.
+    // To clear a lookup, use the same navigation property name with null.
+    const payload = systemUserId
+      ? { 'workerid_systemuser@odata.bind': `/systemusers(${systemUserId})` }
+      : { 'workerid_systemuser@odata.bind': null };
 
-    let updateResult = await QueueitemsService.update(queueItemId, {
-      'workerid_systemuser@odata.bind': bindingValue,
-    } as unknown as Parameters<typeof QueueitemsService.update>[1]);
+    let updateResult = await QueueitemsService.update(queueItemId, payload as unknown as Parameters<typeof QueueitemsService.update>[1]);
 
-    if (!updateResult.success) {
+    if (!updateResult.success && systemUserId) {
       updateResult = await QueueitemsService.update(queueItemId, {
-        'WorkerId@odata.bind': bindingValue,
+        'WorkerId@odata.bind': `/systemusers(${systemUserId})`,
       } as Parameters<typeof QueueitemsService.update>[1]);
     }
 
@@ -553,8 +579,17 @@ export function SupervisorApprovalPage() {
         throw new Error(statusUpdateResult.error?.message ?? `Failed to set Approved status for ${enrolmentId}.`);
       }
 
-      if (row.workMeta?.queueitemId) {
-        await QueueitemsService.delete(row.workMeta.queueitemId);
+      // Remove all active queue items for this enrolment (including any supervisor queue items)
+      try {
+        const allQueueItems = await QueueitemsService.getAll({
+          filter: `objectid_vsi_participantprogramyear/vsi_participantprogramyearid eq '${enrolmentId}' and statecode eq 0`,
+          select: ['queueitemid'],
+        });
+        for (const qi of allQueueItems.data ?? []) {
+          await QueueitemsService.delete(qi.queueitemid);
+        }
+      } catch {
+        // ignore queue cleanup errors
       }
     }
 
@@ -592,9 +627,36 @@ export function SupervisorApprovalPage() {
     setActionError(null);
     try {
       const user = await resolveCurrentUser();
+
+      // Verify the current user is a member of at least one supervisor approval queue.
+      // When simulating ENAdmin/Verifier, skip the Dataverse query and treat as non-member.
+      const queueIds = [...supervisorQueueIds];
+      let isMember = false;
+      if (!simulateNonMember) {
+        for (const queueId of queueIds) {
+          const resp = await QueuemembershipsService.getAll({
+            select: ['systemuserid'],
+            filter: `queueid eq '${queueId}' and systemuserid eq '${user.systemUserId}'`,
+            maxPageSize: 1,
+          });
+          if (resp.success && (resp.data?.length ?? 0) > 0) {
+            isMember = true;
+            break;
+          }
+        }
+      }
+
+      if (!isMember) {
+        setPickReleaseErrorModal('You must be a member of the Supervisor Approval Queue to pick items.');
+        return;
+      }
+
       const rowsToPick = allRows.filter(row => row.itemId != null && selectedIds.has(row.itemId) && row.workMeta?.queueitemId);
       for (const row of rowsToPick) {
         await updateQueueItemWorker(row.workMeta!.queueitemId!, user.systemUserId);
+        await Vsi_participantprogramyearsService.update(row.itemId!, {
+          'ownerid@odata.bind': `/systemusers(${user.systemUserId})`,
+        } as unknown as Parameters<typeof Vsi_participantprogramyearsService.update>[1]);
         setQueueWorkByEnrolmentId(prev => ({
           ...prev,
           [row.itemId!]: {
@@ -622,6 +684,31 @@ export function SupervisorApprovalPage() {
     setReleasingBulk(true);
     setActionError(null);
     try {
+      const user = await resolveCurrentUser();
+
+      // Verify the current user is a member of at least one supervisor approval queue.
+      // When simulating ENAdmin/Verifier, skip the Dataverse query and treat as non-member.
+      const queueIds = [...supervisorQueueIds];
+      let isMember = false;
+      if (!simulateNonMember) {
+        for (const queueId of queueIds) {
+          const resp = await QueuemembershipsService.getAll({
+            select: ['systemuserid'],
+            filter: `queueid eq '${queueId}' and systemuserid eq '${user.systemUserId}'`,
+            maxPageSize: 1,
+          });
+          if (resp.success && (resp.data?.length ?? 0) > 0) {
+            isMember = true;
+            break;
+          }
+        }
+      }
+
+      if (!isMember) {
+        setPickReleaseErrorModal('You must be a member of the Supervisor Approval Queue to release items.');
+        return;
+      }
+
       const rowsToRelease = allRows.filter(row => row.itemId != null && selectedIds.has(row.itemId) && row.workMeta?.queueitemId);
       for (const row of rowsToRelease) {
         await updateQueueItemWorker(row.workMeta!.queueitemId!, null);
@@ -987,6 +1074,9 @@ export function SupervisorApprovalPage() {
           )}
           {approvalErrorModal && (
             <ApprovalErrorModal message={approvalErrorModal} onClose={() => setApprovalErrorModal(null)} />
+          )}
+          {pickReleaseErrorModal && (
+            <ApprovalErrorModal message={pickReleaseErrorModal} onClose={() => setPickReleaseErrorModal(null)} />
           )}
           {manualErrorModal && (
             <ManualErrorModal message={manualErrorModal} onClose={() => setManualErrorModal(null)} />

@@ -35,6 +35,7 @@ type Props = {
   ownerOptions: string[];
   ownerFilter: Set<string>;
   onOwnerFilterChange: (value: Set<string>) => void;
+  ownerFilterShortcuts?: Array<{ label: string; values: Set<string> }>;
   sortKey: SortKey | null;
   sortDir: SortDir;
   onSort: (key: SortKey, dir: SortDir) => void;
@@ -74,6 +75,7 @@ export function EnrolmentDataTable({
   ownerOptions,
   ownerFilter,
   onOwnerFilterChange,
+  ownerFilterShortcuts,
   sortKey,
   sortDir,
   onSort,
@@ -129,6 +131,7 @@ export function EnrolmentDataTable({
                 extra.filterOptions = ownerOptions;
                 extra.selectedFilters = ownerFilter;
                 extra.onFilterChange = onOwnerFilterChange;
+                extra.filterShortcuts = ownerFilterShortcuts;
               }
 
               const dragProps = {

@@ -20,6 +20,7 @@ export type ColumnHeaderFilterProps = {
   filterOperator?: FilterOperator;
   onFilterChange?: (next: Set<string>) => void;
   onFilterOperatorChange?: (op: FilterOperator) => void;
+  filterShortcuts?: Array<{ label: string; values: Set<string> }>;
 };
 
 export type ColumnHeaderMenuProps<K extends string = string> = {
@@ -45,6 +46,7 @@ export function ColumnHeaderMenu<K extends string = string>({
   filterOperator,
   onFilterChange,
   onFilterOperatorChange,
+  filterShortcuts,
   columnWidth,
   onColumnWidthChange,
   dragProps,
@@ -132,6 +134,11 @@ export function ColumnHeaderMenu<K extends string = string>({
                     <button className="chm-item" onClick={() => setView('filter')}>
                       <span className="chm-icon"><Filter size={14} /></span> Filter by
                     </button>
+                    {filterShortcuts && filterShortcuts.map(sc => (
+                      <button key={sc.label} className="chm-item chm-item-shortcut" onClick={() => { onFilterChange!(sc.values); close(); }}>
+                        <span className="chm-icon">&#x2713;</span> {sc.label}
+                      </button>
+                    ))}
                     {hasFilter && (
                       <button className="chm-item chm-item-clear" onClick={() => { onFilterChange!(new Set()); close(); }}>
                         <span className="chm-icon"><FilterX size={14} /></span> Clear filter

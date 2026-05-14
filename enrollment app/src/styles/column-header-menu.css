@@ -262,4 +262,29 @@
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
 }
+.chm-shortcuts {
+  padding: 0.35rem 0.5rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.chm-shortcut {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #3b82f6;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chm-shortcut:hover {
+  background: #dbeafe;
+}
+.chm-item-shortcut {
+  color: #1d4ed8;
+}
+.chm-item-shortcut:hover {
+  background: #eff6ff;
+}
 
