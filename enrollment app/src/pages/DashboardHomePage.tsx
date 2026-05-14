@@ -117,7 +117,7 @@ export function DashboardHomePage() {
     label: string,
   ) => {
     const is45Day = label === '_45DayLetter';
-    setFilters({ verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: is45Day, varianceAlert: false });
+    setFilters({ verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: is45Day });
     setSearchQuery('');
     setTaskStatusFilter(type === 'taskStatus' ? new Set([label]) : new Set());
     setEnrolStatusFilter(type === 'enrolStatus' ? new Set([label]) : new Set());
