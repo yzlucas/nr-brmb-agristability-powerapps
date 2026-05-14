@@ -85,38 +85,47 @@ export function DashboardHomePage() {
   const setFiltersAndReset = useCallback((next: QuickFilterState) => {
     setFilters(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setTaskStatusFilterAndReset = useCallback((next: Set<string>) => {
     setTaskStatusFilter(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setEnrolStatusFilterAndReset = useCallback((next: Set<string>) => {
     setEnrolStatusFilter(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setYearFilterAndReset = useCallback((next: Set<string>) => {
     setYearFilter(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setOwnerFilterAndReset = useCallback((next: Set<string>) => {
     setOwnerFilter(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setTaskFilterOpAndReset = useCallback((next: FilterOperator) => {
     setTaskFilterOp(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setEnrolFilterOpAndReset = useCallback((next: FilterOperator) => {
     setEnrolFilterOp(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setAdvFilterNodesAndReset = useCallback((next: AdvFilterNode[]) => {
     setAdvFilterNodes(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
   const setAdvLogicOpAndReset = useCallback((next: LogicOp) => {
     setAdvLogicOp(next);
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
 
   /** Clear every filter, then optionally apply a single task-status or enrol-status filter. */
@@ -267,6 +276,14 @@ export function DashboardHomePage() {
     });
   };
 
+  const rangeSelect = (ids: string[], checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => { if (checked) next.add(id); else next.delete(id); });
+      return next;
+    });
+  };
+
   const toggleFilter = (key: keyof QuickFilterState) => {
     // When toggling the partnerships filter ON, switch to the matching system view.
     // When toggling it OFF, reset to the default view.
@@ -330,6 +347,7 @@ export function DashboardHomePage() {
               onChange={(nextValue) => {
                 setSearchQuery(nextValue);
                 setCurrentPage(1);
+                setSelectedIds(new Set());
               }}
             />
             <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
@@ -375,6 +393,7 @@ export function DashboardHomePage() {
               />
               <EnrolmentActionsBar
                 hasSelection={selectedIds.size > 0}
+                selectedCount={selectedIds.size}
                 onOpenBulkNotices={() => setShowBulkModal(true)}
                 onOpenAssign={() => setShowAssignModal(true)}
                 onOpenReferToSupervisor={() => setShowSupervisorModal(true)}
@@ -391,6 +410,7 @@ export function DashboardHomePage() {
             onToggleSelectAll={toggleSelectAll}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
+            onRangeSelect={rangeSelect}
             colDragIdx={colDragIdx}
             onColDragStart={handleColDragStart}
             onColDragOver={handleColDragOver}
@@ -532,7 +552,10 @@ export function DashboardHomePage() {
           selectedIds={selectedIds}
           rows={rows}
           onClose={() => setShowBulkModal(false)}
-          onSuccess={(message) => addToast(message)}
+          onSuccess={(message) => {
+            setSelectedIds(new Set());
+            addToast(message);
+          }}
         />
       )}
       {/* Assign modal — logic to be implemented */}

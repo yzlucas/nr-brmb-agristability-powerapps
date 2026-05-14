@@ -79,8 +79,7 @@
       "produces": [],
       "paths": {
         "/{connectionId}/powerautomate/automations/direct/workflows/907927a5e54c4aecb5545115bacc03fd/triggers/manual/paths/invoke": {},
-        "/{connectionId}/powerautomate/automations/direct/workflows/bb9c187d03b84824a69748a31955d94e/triggers/manual/paths/invoke": {},
-        "/{connectionId}/powerautomate/automations/direct/workflows/bb9c187d03b84824a69748a31955d94e/triggers/manual/paths/invoke/EnrolmentIds/{EnrolmentIds}/EnrolmentNoticeSentDate/{EnrolmentNoticeSentDate}/EnrolmentFeeDate/{EnrolmentFeeDate}/Merge/{Merge}": {
+        "/{connectionId}/powerautomate/automations/direct/workflows/bb9c187d03b84824a69748a31955d94e/triggers/manual/paths/invoke": {
           "post": {
             "responses": {
               "default": {
@@ -91,6 +90,9 @@
             "summary": "Bulk EN Flow",
             "description": "Bulk EN Flow",
             "operationId": "BulkENFlow",
+            "consumes": [
+              "application/json"
+            ],
             "parameters": [
               {
                 "name": "connectionId",
@@ -100,36 +102,37 @@
                 "type": "string"
               },
               {
-                "name": "EnrolmentIds",
-                "in": "path",
-                "required": true,
-                "type": "array"
-              },
-              {
-                "name": "EnrolmentNoticeSentDate",
-                "in": "path",
-                "required": true,
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "name": "EnrolmentFeeDate",
-                "in": "path",
-                "required": true,
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "name": "Merge",
-                "in": "path",
-                "required": true,
-                "type": "boolean"
-              },
-              {
                 "name": "api-version",
                 "in": "query",
                 "required": false,
-                "type": "integer"
+                "type": "string"
+              },
+              {
+                "name": "body",
+                "in": "body",
+                "required": true,
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "EnrolmentIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "EnrolmentNoticeSentDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "EnrolmentFeeDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "Merge": {
+                      "type": "boolean"
+                    }
+                  }
+                }
               }
             ]
           }
@@ -181,8 +184,8 @@
     "capabilities": [],
     "description": "",
     "apiDefinitions": {
-      "originalSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/http-20workflows-5fe39d1efd21a19d13-5f571039b465579741.json_original?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-04-16T18%3A35%3A46Z&ske=2026-04-17T18%3A35%3A46Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-04-17T00%3A53%3A36Z&sr=b&sp=r&sig=bsBEikOwQyAYq1AT1weCbwgARxyoPTwlAXHiJx3hCyg%3D",
-      "modifiedSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/http-20workflows-5fe39d1efd21a19d13-5f571039b465579741.json?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-04-16T18%3A35%3A46Z&ske=2026-04-17T18%3A35%3A46Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-04-17T00%3A53%3A36Z&sr=b&sp=r&sig=2GJ%2F6vUK%2FMsmydLdWPvA6zWDSOA4a6P3d0VS2CRaCBM%3D"
+      "originalSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/http-20workflows-5fe39d1efd21a19d13-5f571039b465579741.json_original?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-05-14T05%3A57%3A53Z&ske=2026-05-15T05%3A57%3A53Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-05-14T23%3A46%3A07Z&sr=b&sp=r&sig=W4l%2Fs871iDrTq21MZe4Iq1iM%2FvV7TRd59n%2B2X%2FK85Jo%3D",
+      "modifiedSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/http-20workflows-5fe39d1efd21a19d13-5f571039b465579741.json?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-05-14T05%3A57%3A53Z&ske=2026-05-15T05%3A57%3A53Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-05-14T23%3A46%3A07Z&sr=b&sp=r&sig=B8kEZdH17NROE0xGP8lhI21aqhTUxC58ZGJpQOMnR3E%3D"
     },
     "policyTemplateInstances": [],
     "backendService": {
@@ -205,7 +208,7 @@
       "userPrincipalName": "Melinda.Sargeant@gov.bc.ca"
     },
     "createdTime": "2026-04-02T23:26:44.3201761Z",
-    "changedTime": "2026-04-16T23:48:54.1856207Z",
+    "changedTime": "2026-05-14T22:45:48.7148878Z",
     "environment": {
       "id": "/providers/Microsoft.PowerApps/environments/dcd88fe8-d919-ee82-8313-8376a1e413f4",
       "name": "dcd88fe8-d919-ee82-8313-8376a1e413f4"
