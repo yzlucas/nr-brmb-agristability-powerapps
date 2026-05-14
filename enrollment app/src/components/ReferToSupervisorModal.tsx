@@ -36,6 +36,7 @@ export function ReferToSupervisorModal({
   }
   const selectedRows = rows.filter(r => selectedIds.has(r.vsi_participantprogramyearid));
   const noSelection = selectedRows.length === 0;
+  const alreadySupervisorRows = selectedRows.filter(r => r.vsi_taskstatus === 865520001);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -52,7 +53,9 @@ export function ReferToSupervisorModal({
         throw new Error(`Queue "${SUPERVISOR_QUEUE_NAME}" not found`);
       }
 
-      for (const row of selectedRows) {
+      const rowsToProcess = selectedRows.filter(r => r.vsi_taskstatus !== 865520001);
+
+      for (const row of rowsToProcess) {
         const enrolmentId = row.vsi_participantprogramyearid;
 
         // 1. Set task status to Supervisor and assign to AST Worker (owner)
@@ -112,7 +115,7 @@ export function ReferToSupervisorModal({
         }
       }
 
-      onComplete(selectedRows.map(r => r.vsi_participantprogramyearid));
+      onComplete(rowsToProcess.map(r => r.vsi_participantprogramyearid));
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to refer to supervisor';
@@ -140,15 +143,26 @@ export function ReferToSupervisorModal({
                 the <strong>Supervisor Approval Queue</strong> and set their task status
                 to <strong>Supervisor</strong>.
               </p>
+              {alreadySupervisorRows.length > 0 && (
+                <p className="modal-warning">
+                  {alreadySupervisorRows.length === selectedRows.length
+                    ? 'All selected enrolments are already assigned to supervisor.'
+                    : `${alreadySupervisorRows.length} of the selected enrolment${alreadySupervisorRows.length !== 1 ? 's are' : ' is'} already assigned to supervisor.`}
+                </p>
+              )}
               <div className="modal-selected-list">
                 <table className="selected-enrolments-table">
                   <tbody>
-                    {selectedRows.map((r, i) => (
-                      <tr key={r.vsi_participantprogramyearid}>
-                        <td className="selected-row-num">{i + 1}</td>
-                        <td>{r.vsi_name ?? ''}</td>
-                      </tr>
-                    ))}
+                    {selectedRows.map((r, i) => {
+                        const isSupervisor = r.vsi_taskstatus === 865520001;
+                        return (
+                          <tr key={r.vsi_participantprogramyearid} className={isSupervisor ? 'row-already-supervisor' : ''}>
+                            <td className="selected-row-num">{i + 1}</td>
+                            <td>{r.vsi_name ?? ''}</td>
+                            <td>{isSupervisor && <span className="already-supervisor-badge">Already assigned</span>}</td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>

@@ -119,3 +119,58 @@
     display: none;
   }
 }
+
+/* ── Role switcher (dev / admin only) ─────────────────────────── */
+.role-switcher {
+  margin-top: auto;
+  border-top: 1px solid #d7dbe1;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.role-switcher-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.role-switcher-select {
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.82rem;
+  border: 1.5px solid #d0d6dd;
+  border-radius: 5px;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.role-switcher-select:focus {
+  outline: none;
+  border-color: #4f7ecf;
+}
+
+.role-switcher--collapsed {
+  padding: 0.75rem 0;
+  align-items: center;
+}
+
+.role-switcher-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #dde8f8;
+  color: #1d4f91;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: default;
+  border: 1.5px solid #b8cff0;
+}

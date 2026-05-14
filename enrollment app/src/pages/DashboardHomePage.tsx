@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Columns2, Filter, Info } from 'lucide-react';
 
@@ -6,6 +6,8 @@ import type { SortKey, SortDir, FilterOperator, AdvFilterNode, LogicOp, QuickFil
 import { DEFAULT_VISIBLE_KEYS } from '../constants/columns';
 import { countActiveNodes } from '../utils/filterTree';
 import { useEnrolmentData, useSortedAndFilteredRows } from '../hooks/useEnrolmentData';
+import { resolveCurrentSystemUser } from '../utils/currentUser';
+import { clearSaCache } from './SupervisorApprovalPage';
 import { useViews } from '../hooks/useViews';
 
 import { ViewsMenu } from '../components/ViewsMenu';
@@ -43,12 +45,18 @@ export function DashboardHomePage() {
     flagged: false,
     partnerships: false,
     fortyFiveDayLetter: false,
+    varianceAlert: false,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<Set<string>>(new Set());
   const [enrolStatusFilter, setEnrolStatusFilter] = useState<Set<string>>(new Set());
   const [yearFilter, setYearFilter] = useState<Set<string>>(new Set());
   const [ownerFilter, setOwnerFilter] = useState<Set<string>>(new Set());
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    resolveCurrentSystemUser().then(u => setCurrentUserDisplayName(u.displayName)).catch(() => {});
+  }, []);
   const [taskFilterOp, setTaskFilterOp] = useState<FilterOperator>('equals');
   const [enrolFilterOp, setEnrolFilterOp] = useState<FilterOperator>('equals');
   const [advFilterNodes, setAdvFilterNodes] = useState<AdvFilterNode[]>([]);
@@ -117,7 +125,7 @@ export function DashboardHomePage() {
     label: string,
   ) => {
     const is45Day = label === '_45DayLetter';
-    setFilters({ verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: is45Day });
+    setFilters({ verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: is45Day, varianceAlert: false });
     setSearchQuery('');
     setTaskStatusFilter(type === 'taskStatus' ? new Set([label]) : new Set());
     setEnrolStatusFilter(type === 'enrolStatus' ? new Set([label]) : new Set());
@@ -403,6 +411,7 @@ export function DashboardHomePage() {
             ownerOptions={ownerOptions}
             ownerFilter={ownerFilter}
             onOwnerFilterChange={setOwnerFilterAndReset}
+            ownerFilterShortcuts={currentUserDisplayName ? [{ label: 'Assigned to me', values: new Set([currentUserDisplayName]) }] : undefined}
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={setSort}
@@ -556,6 +565,7 @@ export function DashboardHomePage() {
                 : r
             ));
             setSelectedIds(new Set());
+            clearSaCache();
             addToast(`${updatedIds.length} enrolment${updatedIds.length === 1 ? '' : 's'} referred to supervisor.`);
           }}
           onError={(msg) => addToast(msg, 'error')}

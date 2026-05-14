@@ -1,9 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import { QueueitemsService } from '../generated/services/QueueitemsService';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
+import type { ResolvedCurrentUser } from '../utils/currentUser';
 
 type ApprovedEnrolmentUpdate = {
   id: string;
@@ -27,21 +28,34 @@ export function ApproveCalculatedFeesModal({
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<ResolvedCurrentUser | null>(null);
+
+  useEffect(() => {
+    resolveCurrentSystemUser().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  const normalizeGuid = (v?: string | null) => (v ?? '').replace(/[{}]/g, '').trim().toLowerCase();
+  const currentUserId = normalizeGuid(currentUser?.systemUserId);
 
   const selectedRows = rows.filter(r => selectedIds.has(r.vsi_participantprogramyearid));
-  const notReadyRows = selectedRows.filter(r => r.vsi_taskstatus !== 865520002); // 865520002 = Ready
+  const notReadyRows = selectedRows.filter(r => r.vsi_taskstatus !== 865520002);
   const missingFeeRows = selectedRows.filter(r => r.vsi_calculatedenfee == null);
+  const notOwnedRows = selectedRows.filter(r => currentUserId && normalizeGuid(r.ownerid) !== currentUserId);
   const noSelection = selectedRows.length === 0;
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError(null);
     try {
-      const currentUser = await resolveCurrentSystemUser();
+      const resolvedUser = currentUser ?? await resolveCurrentSystemUser();
       const approvedDate = new Date().toISOString();
       const updates: ApprovedEnrolmentUpdate[] = [];
 
-      for (const row of selectedRows) {
+      const rowsToProcess = selectedRows.filter(
+        r => normalizeGuid(r.ownerid) === normalizeGuid(resolvedUser.systemUserId)
+      );
+
+      for (const row of rowsToProcess) {
         const enrolmentId = row.vsi_participantprogramyearid;
         // Remove all queueitems for this enrolment
         try {
@@ -68,8 +82,8 @@ export function ApproveCalculatedFeesModal({
 
         updates.push({
           id: enrolmentId,
-          approverId: currentUser.systemUserId,
-          approverName: currentUser.displayName,
+          approverId: resolvedUser.systemUserId,
+          approverName: resolvedUser.displayName,
           approvedDate,
         });
       }
@@ -103,15 +117,26 @@ export function ApproveCalculatedFeesModal({
               <p>
                 This will approve calculated fees and remove any queue items for {selectedIds.size} enrolment{selectedIds.size !== 1 ? 's' : ''}.
               </p>
+              {notOwnedRows.length > 0 && (
+                <p className="modal-warning">
+                  {notOwnedRows.length === selectedRows.length
+                    ? 'None of the selected enrolments are assigned to you — only enrolments you own can be approved.'
+                    : `${notOwnedRows.length} selected enrolment${notOwnedRows.length !== 1 ? 's are' : ' is'} not assigned to you and will be skipped.`}
+                </p>
+              )}
               <div className="modal-selected-list">
                 <table className="selected-enrolments-table">
                   <tbody>
-                    {selectedRows.map((r, i) => (
-                      <tr key={r.vsi_participantprogramyearid}>
-                        <td className="selected-row-num">{i + 1}</td>
-                        <td>{r.vsi_name ?? ''}</td>
-                      </tr>
-                    ))}
+                    {selectedRows.map((r, i) => {
+                      const notOwned = currentUserId && normalizeGuid(r.ownerid) !== currentUserId;
+                      return (
+                        <tr key={r.vsi_participantprogramyearid} className={notOwned ? 'row-already-supervisor' : ''}>
+                          <td className="selected-row-num">{i + 1}</td>
+                          <td>{r.vsi_name ?? ''}</td>
+                          <td>{notOwned && <span className="already-supervisor-badge">Not your enrolment</span>}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -121,7 +146,7 @@ export function ApproveCalculatedFeesModal({
         <div className="modal-footer">
           <button
             className="btn-ok"
-            disabled={submitting || noSelection || notReadyRows.length > 0 || missingFeeRows.length > 0}
+            disabled={submitting || noSelection || notReadyRows.length > 0 || missingFeeRows.length > 0 || (currentUserId ? notOwnedRows.length === selectedRows.length : false)}
             onClick={handleSubmit}
           >
             {submitting ? 'Submitting...' : 'Confirm'}

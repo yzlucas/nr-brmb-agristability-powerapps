@@ -6,6 +6,7 @@ import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
 import { ConfirmActionModal } from '../components/ConfirmActionModal';
 import { ReferToSupervisorModal } from '../components/ReferToSupervisorModal';
 import { patchEnrolmentCache } from '../hooks/useEnrolmentData';
+import { removeSaItemsFromCache } from './SupervisorApprovalPage';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import { MicrosoftDataverseService } from '../generated/services/MicrosoftDataverseService';
 import { QueueitemsService } from '../generated/services/QueueitemsService';
@@ -21,13 +22,6 @@ type CurrentUser = {
   systemUserId: string;
   displayName: string;
 };
-
-type QueueWorkMeta = {
-  queueitemId?: string;
-  workerId?: string;
-  workedBy: string;
-};
-
 type XrmWebApiHost = {
   Xrm?: {
     WebApi?: {
@@ -54,13 +48,6 @@ const getStringField = (record: unknown, field: string): string => {
 function normalizeGuid(value?: string | null): string {
   return (value ?? '').replace(/[{}]/g, '').trim().toLowerCase();
 }
-
-function getFormattedValue(record: unknown, field: string): string | undefined {
-  if (!record || typeof record !== 'object') return undefined;
-  const value = (record as Record<string, unknown>)[`${field}@OData.Community.Display.V1.FormattedValue`];
-  return typeof value === 'string' ? value : undefined;
-}
-
 async function getAccountFromXrm(accountId: string): Promise<Record<string, unknown> | null> {
   const candidates = [window, window.parent, window.top];
   for (const candidate of candidates) {
@@ -121,26 +108,8 @@ function getBooleanText(value: unknown): string {
   return '-';
 }
 
-async function getActiveQueueWorkMeta(enrolmentId: string): Promise<QueueWorkMeta | null> {
-  const queueitemResult = await QueueitemsService.getAll({
-    filter: `objectid_vsi_participantprogramyear/vsi_participantprogramyearid eq '${enrolmentId}' and statecode eq 0`,
-    select: ['queueitemid', '_workerid_value', 'workeridmodifiedon', '_queueid_value'],
-    maxPageSize: 1,
-  });
-
-  const queueItem = queueitemResult.data?.[0];
-  if (!queueItem) return null;
-
-  return {
-    queueitemId: queueItem.queueitemid,
-    workerId: queueItem._workerid_value,
-    workedBy: getFormattedValue(queueItem, '_workerid_value') ?? '-',
-  };
-}
-
 function getApprovalError(
   record: Vsi_participantprogramyears,
-  workMeta: QueueWorkMeta | null,
   currentUser: CurrentUser,
 ): string | null {
   const enrolmentName = record.vsi_name ?? 'This enrolment';
@@ -153,10 +122,9 @@ function getApprovalError(
     return `${enrolmentName} cannot be approved because it does not have a calculated fee.`;
   }
 
-  const workerId = normalizeGuid(workMeta?.workerId);
-  if (workerId !== normalizeGuid(currentUser.systemUserId)) {
-    const assignedTo = workMeta?.workerId ? `assigned to ${workMeta.workedBy}` : 'not picked';
-    return `${enrolmentName} cannot be approved because it is ${assignedTo}. An enrolment must be picked by you before it can be approved.`;
+  const raw = record as unknown as Record<string, unknown>;
+  if (normalizeGuid(raw['_ownerid_value'] as string) !== normalizeGuid(currentUser.systemUserId)) {
+    return `${enrolmentName} cannot be approved because you are not the owner of this enrolment.`;
   }
 
   return null;
@@ -173,7 +141,6 @@ export function EnrolmentCalculationPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
-  const [queueWorkMeta, setQueueWorkMeta] = useState<QueueWorkMeta | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
@@ -196,6 +163,7 @@ export function EnrolmentCalculationPage() {
             'vsi_name',
             'vsi_taskstatus',
             'vsi_enrolmentstatus',
+            '_ownerid_value',
             'vsi_calculatedenfee',
             'vsi_previousyearcalculatedenfee',
             'modifiedon',
@@ -232,12 +200,8 @@ export function EnrolmentCalculationPage() {
         }
 
         setRecord(result.data);
-        setQueueWorkMeta(null);
         try {
-          const workMeta = await getActiveQueueWorkMeta(result.data.vsi_participantprogramyearid);
-          if (!cancelled) setQueueWorkMeta(workMeta);
         } catch {
-          if (!cancelled) setQueueWorkMeta(null);
         }
 
         const participantId = result.data._vsi_participantid_value?.replace(/[{}]/g, '');
@@ -308,19 +272,12 @@ export function EnrolmentCalculationPage() {
     return nextUser;
   };
 
-  const resolveWorkMeta = async (): Promise<QueueWorkMeta | null> => {
-    if (!enrolmentId) return queueWorkMeta;
-    const workMeta = queueWorkMeta ?? await getActiveQueueWorkMeta(enrolmentId);
-    setQueueWorkMeta(workMeta);
-    return workMeta;
-  };
-
   const handleApproveClick = async () => {
     if (!record) return;
 
     try {
-      const [user, workMeta] = await Promise.all([resolveUser(), resolveWorkMeta()]);
-      const approvalError = getApprovalError(record, workMeta, user);
+      const user = await resolveUser();
+      const approvalError = getApprovalError(record, user);
       if (approvalError) {
         setApprovalErrorModal(approvalError);
         return;
@@ -338,8 +295,8 @@ export function EnrolmentCalculationPage() {
     setApproving(true);
     setError(null);
     try {
-      const [user, workMeta] = await Promise.all([resolveUser(), resolveWorkMeta()]);
-      const approvalError = getApprovalError(record, workMeta, user);
+      const user = await resolveUser();
+      const approvalError = getApprovalError(record, user);
       if (approvalError) {
         setShowApproveConfirm(false);
         setApprovalErrorModal(approvalError);
@@ -353,16 +310,25 @@ export function EnrolmentCalculationPage() {
         throw new Error(statusUpdateResult.error?.message ?? `Failed to set Approved status for ${enrolmentId}.`);
       }
 
-      if (workMeta?.queueitemId) {
-        await QueueitemsService.delete(workMeta.queueitemId);
+      // Remove all active queue items for this enrolment (including supervisor queue)
+      try {
+        const allQueueItems = await QueueitemsService.getAll({
+          filter: `objectid_vsi_participantprogramyear/vsi_participantprogramyearid eq '${enrolmentId}' and statecode eq 0`,
+          select: ['queueitemid'],
+        });
+        for (const qi of allQueueItems.data ?? []) {
+          await QueueitemsService.delete(qi.queueitemid);
+        }
+      } catch {
+        // ignore queue cleanup errors
       }
 
       const approvedFields: Partial<Vsi_participantprogramyears> = {
         vsi_taskstatus: 865520003 as unknown as Vsi_participantprogramyears['vsi_taskstatus'],
       };
       patchEnrolmentCache([{ id: enrolmentId, fields: approvedFields }]);
+      if (source === 'supervisor') removeSaItemsFromCache([enrolmentId]);
       setRecord(prev => prev ? { ...prev, ...approvedFields } : prev);
-      setQueueWorkMeta(null);
       setShowApproveConfirm(false);
       setRefreshKey(prev => prev + 1);
     } catch (err) {
