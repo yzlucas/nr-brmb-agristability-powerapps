@@ -410,6 +410,13 @@
   flex-shrink: 0;
 }
 
+.enrolment-actions-selected-count {
+  font-size: 0.83rem;
+  color: #1d6ee6;
+  font-weight: 500;
+  margin-right: 0.25rem;
+}
+
 .dash-toolbar-btn {
   display: inline-flex;
   align-items: center;
@@ -638,3 +645,6 @@
   white-space: nowrap;
 }
 
+
+/* Bulk notices submitting */
+.bulk-submitting-label { font-weight: 600; margin: 0.5rem 0; font-size: 0.95rem; color: #4b5563; }

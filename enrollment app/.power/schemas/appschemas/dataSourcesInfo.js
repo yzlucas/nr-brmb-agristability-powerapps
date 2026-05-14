@@ -5416,7 +5416,7 @@ export const dataSourcesInfo = {
     "dataSourceType": "Connector",
     "apis": {
       "BulkENFlow": {
-        "path": "/{connectionId}/powerautomate/automations/direct/workflows/bb9c187d03b84824a69748a31955d94e/triggers/manual/paths/invoke/EnrolmentIds/{EnrolmentIds}/EnrolmentNoticeSentDate/{EnrolmentNoticeSentDate}/EnrolmentFeeDate/{EnrolmentFeeDate}/Merge/{Merge}",
+        "path": "/{connectionId}/powerautomate/automations/direct/workflows/bb9c187d03b84824a69748a31955d94e/triggers/manual/paths/invoke",
         "method": "POST",
         "parameters": [
           {
@@ -5426,34 +5426,16 @@ export const dataSourcesInfo = {
             "type": "string"
           },
           {
-            "name": "EnrolmentIds",
-            "in": "path",
+            "name": "body",
+            "in": "body",
             "required": true,
-            "type": "array"
-          },
-          {
-            "name": "EnrolmentNoticeSentDate",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "EnrolmentFeeDate",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "Merge",
-            "in": "path",
-            "required": true,
-            "type": "boolean"
+            "type": "object"
           },
           {
             "name": "api-version",
             "in": "query",
             "required": false,
-            "type": "integer"
+            "type": "string"
           }
         ],
         "responseInfo": {

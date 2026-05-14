@@ -6,18 +6,22 @@ const ASSIGN_ROLES: AppRole[] = ['SystemAdmin', 'Supervisor', 'ENAdmin'];
 
 type Props = {
   hasSelection: boolean;
+  selectedCount: number;
   onOpenBulkNotices: () => void;
   onOpenAssign: () => void;
   onOpenReferToSupervisor: () => void;
   onOpenApproveCalculatedFees: () => void;
 };
 
-export function EnrolmentActionsBar({ hasSelection, onOpenBulkNotices, onOpenAssign, onOpenReferToSupervisor, onOpenApproveCalculatedFees }: Props) {
+export function EnrolmentActionsBar({ hasSelection, selectedCount, onOpenBulkNotices, onOpenAssign, onOpenReferToSupervisor, onOpenApproveCalculatedFees }: Props) {
   const { activeRole } = useRole();
   const canAssign = ASSIGN_ROLES.includes(activeRole);
 
   return (
     <div className="enrolment-actions">
+      {selectedCount > 0 && (
+        <span className="enrolment-actions-selected-count">{selectedCount} selected</span>
+      )}
       {canAssign && (
         <button className="dash-btn-secondary" onClick={onOpenBulkNotices} disabled={!hasSelection}>
           <FileText size={15} /> Bulk EN Notices

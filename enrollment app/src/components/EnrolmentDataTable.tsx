@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { DragEvent } from 'react';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import type { FilterOperator, SortDir, SortKey } from '../types/enrollment';
@@ -15,6 +16,7 @@ type Props = {
   onToggleSelectAll: () => void;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
+  onRangeSelect: (ids: string[], checked: boolean) => void;
   colDragIdx: number | null;
   onColDragStart: (index: number) => void;
   onColDragOver: (event: DragEvent, index: number) => void;
@@ -55,6 +57,7 @@ export function EnrolmentDataTable({
   onToggleSelectAll,
   selectedIds,
   onToggleSelect,
+  onRangeSelect,
   colDragIdx,
   onColDragStart,
   onColDragOver,
@@ -85,6 +88,7 @@ export function EnrolmentDataTable({
   coreAppId,
   coreBaseUrl,
 }: Props) {
+  const lastClickedIdxRef = useRef<number>(-1);
   const isEmptyState = allRowsCount === 0 || pagedRows.length === 0;
 
   return (
@@ -181,7 +185,21 @@ export function EnrolmentDataTable({
                     <input
                       type="checkbox"
                       checked={selectedIds.has(row.vsi_participantprogramyearid)}
-                      onChange={() => onToggleSelect(row.vsi_participantprogramyearid)}
+                      onChange={() => {}}
+                      onClick={(e: React.MouseEvent<HTMLInputElement>) => {
+                        if (e.shiftKey && lastClickedIdxRef.current >= 0) {
+                          const start = Math.min(lastClickedIdxRef.current, index);
+                          const end = Math.max(lastClickedIdxRef.current, index);
+                          const rangeIds = pagedRows
+                            .slice(start, end + 1)
+                            .map(r => r.vsi_participantprogramyearid);
+                          const willBeChecked = !selectedIds.has(row.vsi_participantprogramyearid);
+                          onRangeSelect(rangeIds, willBeChecked);
+                        } else {
+                          onToggleSelect(row.vsi_participantprogramyearid);
+                        }
+                        lastClickedIdxRef.current = index;
+                      }}
                     />
                   </td>
                   {visibleColumnKeys.map(key => {

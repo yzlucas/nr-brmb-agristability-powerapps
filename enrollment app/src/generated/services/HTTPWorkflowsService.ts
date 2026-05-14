@@ -16,9 +16,9 @@ export class HTTPWorkflowsService {
    * Bulk EN Flow
    * Bulk EN Flow
    */
-  public static async BulkENFlow(EnrolmentIds: unknown, EnrolmentNoticeSentDate: string, EnrolmentFeeDate: string, Merge: boolean, api_version?: string): Promise<IOperationResult<void>> {
-    const params: { EnrolmentIds: unknown, EnrolmentNoticeSentDate: string, EnrolmentFeeDate: string, Merge: boolean, "api-version"?: string } = { EnrolmentIds, EnrolmentNoticeSentDate, EnrolmentFeeDate, Merge, "api-version": api_version };
-    const result = await HTTPWorkflowsService.client.executeAsync<{ EnrolmentIds: unknown, EnrolmentNoticeSentDate: string, EnrolmentFeeDate: string, Merge: boolean, "api-version"?: string }, void>(
+  public static async BulkENFlow(body: Record<string, unknown>, api_version?: string): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown>, "api-version"?: string } = { body, "api-version": api_version };
+    const result = await HTTPWorkflowsService.client.executeAsync<{ body: Record<string, unknown>, "api-version"?: string }, void>(
       {
         connectorOperation: {
           tableName: HTTPWorkflowsService.dataSourceName,

@@ -24,58 +24,78 @@ export function BulkNoticesModal({
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<unknown>(null);
 
+  const count = selectedIds.size;
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={bulkSubmitting ? undefined : onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Generate Bulk Enrolment Notices</h3>
-          <button className="modal-close" onClick={onClose}>&times;</button>
+          {!bulkSubmitting && <button className="modal-close" onClick={onClose}>&times;</button>}
         </div>
         <div className="modal-body">
-          <label className="modal-field">
-            <span>Enrolment Sent Date:</span>
-            <input type="date" value={bulkSentDate} onChange={e => setBulkSentDate(e.target.value)} />
-          </label>
-          <label className="modal-field">
-            <span>Enrolment Fee Date:</span>
-            <input type="date" value={bulkFeeDate} onChange={e => setBulkFeeDate(e.target.value)} />
-          </label>
-          <label className="modal-checkbox">
-            <input type="checkbox" checked={bulkMergedPdf} onChange={e => setBulkMergedPdf(e.target.checked)} />
-            Produce Merged PDF
-          </label>
+          {bulkSubmitting ? (
+            <p className="bulk-submitting-label">Submitting {count} enrolment notice{count === 1 ? '' : 's'}…</p>
+          ) : (
+            <>
+              <label className="modal-field">
+                <span>Enrolment Sent Date:</span>
+                <input type="date" value={bulkSentDate} onChange={e => setBulkSentDate(e.target.value)} />
+              </label>
+              <label className="modal-field">
+                <span>Enrolment Fee Date:</span>
+                <input type="date" value={bulkFeeDate} onChange={e => setBulkFeeDate(e.target.value)} />
+              </label>
+              <label className="modal-checkbox">
+                <input type="checkbox" checked={bulkMergedPdf} onChange={e => setBulkMergedPdf(e.target.checked)} />
+                Produce Merged PDF
+              </label>
+            </>
+          )}
         </div>
         <div className="modal-footer">
-          <button
-            className="btn-ok"
-            disabled={bulkSubmitting || selectedIds.size === 0 || bulkResult !== null}
-            onClick={async () => {
-              setBulkSubmitting(true);
-              setBulkError(null);
-              try {
-                const enrolmentIds = Array.from(selectedIds);
-                const result = await HTTPWorkflowsService.BulkENFlow(
-                  enrolmentIds,
-                  bulkSentDate,
-                  bulkFeeDate,
-                  bulkMergedPdf,
-                  '2024-10-01'
-                );
-                setBulkResult(result);
-                onSuccess?.(`${enrolmentIds.length} enrolment notice${enrolmentIds.length === 1 ? '' : 's'} generated successfully.`);
-              } catch (err) {
-                setBulkError(err instanceof Error ? err.message : 'Workflow failed');
-              } finally {
-                setBulkSubmitting(false);
-              }
-            }}
-          >
-            {bulkSubmitting ? 'Submitting...' : 'OK'}
-          </button>
-          <button className="btn-cancel" disabled={bulkSubmitting} onClick={onClose}>
-            {bulkResult !== null ? 'Close' : 'Cancel'}
-          </button>
+          {!bulkSubmitting && !bulkResult && (
+            <>
+              <button
+                className="btn-ok"
+                disabled={selectedIds.size === 0}
+                onClick={async () => {
+                  setBulkSubmitting(true);
+                  setBulkError(null);
+                  try {
+                    const allIds = Array.from(selectedIds);
+
+                    const result = await HTTPWorkflowsService.BulkENFlow({
+                      EnrolmentIds: allIds,
+                      EnrolmentNoticeSentDate: bulkSentDate,
+                      EnrolmentFeeDate: bulkFeeDate,
+                      Merge: bulkMergedPdf,
+                    }, '2024-10-01');
+                    if (!result.success) {
+                      const msg = result.error instanceof Error
+                        ? result.error.message
+                        : (result.error as { message?: string } | undefined)?.message
+                          ?? 'Workflow failed';
+                      throw new Error(msg);
+                    }
+
+                    setBulkResult(true);
+                    onSuccess?.(`${allIds.length} enrolment notice${allIds.length === 1 ? '' : 's'} submitted for generation. Processing will continue in the background.`);
+                    onClose();
+                  } catch (err) {
+                    setBulkError(err instanceof Error ? err.message : 'Workflow failed');
+                  } finally {
+                    setBulkSubmitting(false);
+                  }
+                }}
+              >
+                OK
+              </button>
+              <button className="btn-cancel" onClick={onClose}>Cancel</button>
+            </>
+          )}
           {bulkError && <span className="modal-error">{bulkError}</span>}
+          {bulkError && <button className="btn-cancel" onClick={onClose}>Close</button>}
         </div>
         {selectedIds.size > 0 && (
           <div className="modal-selected-list">
