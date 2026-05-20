@@ -451,7 +451,7 @@ export function EnrolmentCalculationPage() {
               <CircleCheck size={14} aria-hidden="true" />
               {approving ? 'Approving...' : 'Approve'}
             </button>
-            <button
+            {/* <button
               className="calc-outline-btn"
               type="button"
               onClick={() => void handleFarmsApiTestClick()}
@@ -459,8 +459,8 @@ export function EnrolmentCalculationPage() {
             >
               <ExternalLink size={14} aria-hidden="true" />
               {farmsApiTestLoading ? 'Calling FARMS...' : 'Test FARMS Line Items'}
-            </button>
-            <button
+            </button> */}
+            {/* <button
               className="calc-outline-btn"
               type="button"
               onClick={() => void handleFarmsWorkflowTestClick()}
@@ -468,7 +468,7 @@ export function EnrolmentCalculationPage() {
             >
               <ExternalLink size={14} aria-hidden="true" />
               Test FARMS Workflow
-            </button>
+            </button> */}
             {farmsApiTestMessage && <span className="calc-inline-status">{farmsApiTestMessage}</span>}
           </div>
         </div>
