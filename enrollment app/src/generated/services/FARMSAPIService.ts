@@ -85,8 +85,8 @@ export class FARMSAPIService {
    * Delete One Code
    */
   public static async DeleteOneCode(codeTableName: string, codeName: string, Content_Type: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { codeTableName: string, codeName: string, "Content-Type": string, body: Record<string, unknown> } = { codeTableName, codeName, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ codeTableName: string, codeName: string, Content_Type: string, body: Record<string, unknown> }, void>(
+    const params: { codeTableName: string, codeName: string, "Content-Type": string, body: Record<string, unknown> } = { codeTableName, codeName, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ codeTableName: string, codeName: string, "Content-Type": string, body: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -321,8 +321,8 @@ export class FARMSAPIService {
    * Import BPU
    */
   public static async ImportBPU(fileName: string, Content_Type?: string, body?: string): Promise<IOperationResult<void>> {
-    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, Content_Type?: string, body?: string }, void>(
+    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, "Content-Type"?: string, body?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -338,8 +338,8 @@ export class FARMSAPIService {
    * ImportIVPR
    */
   public static async ImportIVPR(fileName: string, Content_Type?: string, body?: string): Promise<IOperationResult<void>> {
-    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, Content_Type?: string, body?: string }, void>(
+    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, "Content-Type"?: string, body?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -355,8 +355,8 @@ export class FARMSAPIService {
    * Import CRA
    */
   public static async ImportCRA(fileName: string, Content_Type?: string, body?: string): Promise<IOperationResult<void>> {
-    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, Content_Type?: string, body?: string }, void>(
+    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, "Content-Type"?: string, body?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -406,8 +406,8 @@ export class FARMSAPIService {
    * Import FMV
    */
   public static async ImportFMV(fileName: string, Content_Type?: string, body?: string): Promise<IOperationResult<void>> {
-    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, Content_Type?: string, body?: string }, void>(
+    const params: { fileName: string, "Content-Type"?: string, body?: string } = { fileName, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ fileName: string, "Content-Type"?: string, body?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -423,8 +423,8 @@ export class FARMSAPIService {
    * Delete One InventoryItemDetail
    */
   public static async DeleteOneInventoryItemDetail(inventoryItemDetailId: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { inventoryItemDetailId: string, "Content-Type"?: string } = { inventoryItemDetailId, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemDetailId: string, Content_Type?: string }, void>(
+    const params: { inventoryItemDetailId: string, "Content-Type"?: string } = { inventoryItemDetailId, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemDetailId: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -440,8 +440,8 @@ export class FARMSAPIService {
    * Update One InventoryItemDetail
    */
   public static async UpdateOneInventoryItemDetail(inventoryItemDetailId: string, Content_Type: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { inventoryItemDetailId: string, "Content-Type": string, body: Record<string, unknown> } = { inventoryItemDetailId, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemDetailId: string, Content_Type: string, body: Record<string, unknown> }, void>(
+    const params: { inventoryItemDetailId: string, "Content-Type": string, body: Record<string, unknown> } = { inventoryItemDetailId, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemDetailId: string, "Content-Type": string, body: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -491,8 +491,8 @@ export class FARMSAPIService {
    * Delete One InventoryTypeXref
    */
   public static async DeleteOneInventoryTypeXref(agristabilityCommodityXrefId: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { agristabilityCommodityXrefId: string, "Content-Type"?: string } = { agristabilityCommodityXrefId, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ agristabilityCommodityXrefId: string, Content_Type?: string }, void>(
+    const params: { agristabilityCommodityXrefId: string, "Content-Type"?: string } = { agristabilityCommodityXrefId, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ agristabilityCommodityXrefId: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -508,8 +508,8 @@ export class FARMSAPIService {
    * Update One InventoryTypeXref
    */
   public static async UpdateOneInventoryTypeXref(agristabilityCommodityXrefId: string, Content_Type?: string, body?: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { agristabilityCommodityXrefId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { agristabilityCommodityXrefId, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ agristabilityCommodityXrefId: string, Content_Type?: string, body?: Record<string, unknown> }, void>(
+    const params: { agristabilityCommodityXrefId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { agristabilityCommodityXrefId, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ agristabilityCommodityXrefId: string, "Content-Type"?: string, body?: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -525,8 +525,8 @@ export class FARMSAPIService {
    * Get InventoryItemAttributes By InventoryItemCode
    */
   public static async GetInventoryItemAttributesByInventoryItemCode(inventoryItemCode?: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { inventoryItemCode?: string, "Content-Type"?: string } = { inventoryItemCode, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemCode?: string, Content_Type?: string }, void>(
+    const params: { inventoryItemCode?: string, "Content-Type"?: string } = { inventoryItemCode, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemCode?: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -542,8 +542,8 @@ export class FARMSAPIService {
    * Create One InventoryItemAttribute
    */
   public static async CreateOneInventoryItemAttribute(Content_Type?: string, body?: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { "Content-Type"?: string, body?: Record<string, unknown> } = { Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ Content_Type?: string, body?: Record<string, unknown> }, void>(
+    const params: { "Content-Type"?: string, body?: Record<string, unknown> } = { "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ "Content-Type"?: string, body?: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -559,8 +559,8 @@ export class FARMSAPIService {
    * Delete One InventoryItemAttribute
    */
   public static async DeleteOneInventoryItemAttribute(inventoryItemAttributeId: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { inventoryItemAttributeId: string, "Content-Type"?: string } = { inventoryItemAttributeId, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemAttributeId: string, Content_Type?: string }, void>(
+    const params: { inventoryItemAttributeId: string, "Content-Type"?: string } = { inventoryItemAttributeId, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemAttributeId: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -576,8 +576,8 @@ export class FARMSAPIService {
    * Update One InventoryItemAttribute
    */
   public static async UpdateOneInventoryItemAttribute(inventoryItemAttributeId: string, Content_Type?: string, body?: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { inventoryItemAttributeId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { inventoryItemAttributeId, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemAttributeId: string, Content_Type?: string, body?: Record<string, unknown> }, void>(
+    const params: { inventoryItemAttributeId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { inventoryItemAttributeId, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ inventoryItemAttributeId: string, "Content-Type"?: string, body?: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -610,8 +610,8 @@ export class FARMSAPIService {
    * Create One StructureGroupAttribute
    */
   public static async CreateOneStructureGroupAttribute(Content_Type?: string, body?: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { "Content-Type"?: string, body?: Record<string, unknown> } = { Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ Content_Type?: string, body?: Record<string, unknown> }, void>(
+    const params: { "Content-Type"?: string, body?: Record<string, unknown> } = { "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ "Content-Type"?: string, body?: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -627,8 +627,8 @@ export class FARMSAPIService {
    * Delete One StructureGroupAttribute
    */
   public static async DeleteOneStructureGroupAttribute(structureGroupAttributeId: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { structureGroupAttributeId: string, "Content-Type"?: string } = { structureGroupAttributeId, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ structureGroupAttributeId: string, Content_Type?: string }, void>(
+    const params: { structureGroupAttributeId: string, "Content-Type"?: string } = { structureGroupAttributeId, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ structureGroupAttributeId: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -644,8 +644,8 @@ export class FARMSAPIService {
    * Update One StructureGroupAttribute
    */
   public static async UpdateOneStructureGroupAttribute(structureGroupAttributeId: string, Content_Type?: string, body?: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { structureGroupAttributeId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { structureGroupAttributeId, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ structureGroupAttributeId: string, Content_Type?: string, body?: Record<string, unknown> }, void>(
+    const params: { structureGroupAttributeId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { structureGroupAttributeId, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ structureGroupAttributeId: string, "Content-Type"?: string, body?: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -678,8 +678,8 @@ export class FARMSAPIService {
    * Create One ConfigurationParameter
    */
   public static async CreateOneConfigurationParameter(Content_Type?: string, body?: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { "Content-Type"?: string, body?: Record<string, unknown> } = { Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ Content_Type?: string, body?: Record<string, unknown> }, void>(
+    const params: { "Content-Type"?: string, body?: Record<string, unknown> } = { "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ "Content-Type"?: string, body?: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -695,8 +695,8 @@ export class FARMSAPIService {
    * Delete One ConfigurationParameter
    */
   public static async DeleteOneConfigurationParameter(configurationParameterId: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { configurationParameterId: string, "Content-Type"?: string } = { configurationParameterId, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ configurationParameterId: string, Content_Type?: string }, void>(
+    const params: { configurationParameterId: string, "Content-Type"?: string } = { configurationParameterId, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ configurationParameterId: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -763,8 +763,8 @@ export class FARMSAPIService {
    * Delete One LineItem
    */
   public static async DeleteOneLineItem(lineItemId: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { lineItemId: string, "Content-Type"?: string } = { lineItemId, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ lineItemId: string, Content_Type?: string }, void>(
+    const params: { lineItemId: string, "Content-Type"?: string } = { lineItemId, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ lineItemId: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -846,8 +846,8 @@ export class FARMSAPIService {
    * Delete One MarketRatePremium
    */
   public static async DeleteOneMarketRatePremium(marketRatePremiumId: string, Content_Type?: string): Promise<IOperationResult<void>> {
-    const params: { marketRatePremiumId: string, "Content-Type"?: string } = { marketRatePremiumId, Content_Type };
-    const result = await FARMSAPIService.client.executeAsync<{ marketRatePremiumId: string, Content_Type?: string }, void>(
+    const params: { marketRatePremiumId: string, "Content-Type"?: string } = { marketRatePremiumId, "Content-Type": Content_Type };
+    const result = await FARMSAPIService.client.executeAsync<{ marketRatePremiumId: string, "Content-Type"?: string }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,
@@ -863,8 +863,8 @@ export class FARMSAPIService {
    * Update One MarketRatePremium
    */
   public static async UpdateOneMarketRatePremium(marketRatePremiumId: string, Content_Type?: string, body?: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { marketRatePremiumId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { marketRatePremiumId, Content_Type, body };
-    const result = await FARMSAPIService.client.executeAsync<{ marketRatePremiumId: string, Content_Type?: string, body?: Record<string, unknown> }, void>(
+    const params: { marketRatePremiumId: string, "Content-Type"?: string, body?: Record<string, unknown> } = { marketRatePremiumId, "Content-Type": Content_Type, body };
+    const result = await FARMSAPIService.client.executeAsync<{ marketRatePremiumId: string, "Content-Type"?: string, body?: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: FARMSAPIService.dataSourceName,

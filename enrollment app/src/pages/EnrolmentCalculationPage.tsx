@@ -12,7 +12,6 @@ import { MicrosoftDataverseService } from '../generated/services/MicrosoftDatave
 import { QueueitemsService } from '../generated/services/QueueitemsService';
 import { Vsi_armsconfigurationsService } from '../generated/services/Vsi_armsconfigurationsService';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
-import { farmsApi } from '../services/farmsApi';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
 import { calculateVariance, formatCurrencyOr, formatVariancePercent, getTaskStatusLabel } from '../utils/helpers';
 
@@ -165,8 +164,7 @@ export function EnrolmentCalculationPage() {
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [farmsApiTestLoading, setFarmsApiTestLoading] = useState(false);
-  const [farmsApiTestMessage, setFarmsApiTestMessage] = useState('');
+  const [farmsApiTestMessage,] = useState('');
 
   useEffect(() => {
     if (!enrolmentId) {
