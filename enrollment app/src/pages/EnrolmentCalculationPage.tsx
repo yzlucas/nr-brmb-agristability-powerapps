@@ -388,31 +388,6 @@ export function EnrolmentCalculationPage() {
     }
   };
 
-  const handleFarmsApiTestClick = async () => {
-    setFarmsApiTestLoading(true);
-    setFarmsApiTestMessage('');
-    try {
-      const result = await farmsApi.getLineItemsByProgramYear(2025);
-      setFarmsApiTestMessage(result.success ? 'FARMS API lineItems test succeeded.' : `FARMS API lineItems test failed: ${result.error?.message ?? 'Unknown error'}`);
-    } catch (err) {
-      setFarmsApiTestMessage(err instanceof Error ? err.message : 'FARMS API lineItems test failed.');
-    } finally {
-      setFarmsApiTestLoading(false);
-    }
-  };
-
-  const handleFarmsWorkflowTestClick = async () => {
-    setFarmsApiTestLoading(true);
-    setFarmsApiTestMessage('');
-    try {
-      const result = await farmsApi.getEnrolmentNoticeWorkflowCalculation('3786019', 2021);
-      setFarmsApiTestMessage(result.success ? 'FARMS API workflow test succeeded.' : `FARMS API workflow test failed: ${result.error?.message ?? 'Unknown error'}`);
-    } catch (err) {
-      setFarmsApiTestMessage(err instanceof Error ? err.message : 'FARMS API workflow test failed.');
-    } finally {
-      setFarmsApiTestLoading(false);
-    }
-  };
 
   return (
     <section className="page-card calc-page">
