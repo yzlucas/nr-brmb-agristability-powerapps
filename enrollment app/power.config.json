@@ -34,6 +34,15 @@
         "commondataserviceforapps"
       ],
       "dataSets": {}
+    },
+    "b784f6d1-e4ea-400e-8700-d43fca654a3c": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_farms-20api-5fe39d1efd21a19d13-5f571039b465579741",
+      "displayName": "FARMS API",
+      "dataSources": [
+        "farms_20api_5fe39d1efd21a19d13_5f571039b465579741"
+      ],
+      "authenticationType": "oAuthClientCredentials",
+      "dataSets": {}
     }
   },
   "databaseReferences": {

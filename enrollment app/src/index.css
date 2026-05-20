@@ -126,6 +126,8 @@ button:focus-visible {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
+  gap: 0.7rem;
+  flex-wrap: wrap;
 }
 
 .calc-state {
@@ -136,6 +138,14 @@ button:focus-visible {
 
 .calc-state-error {
   color: #b42318;
+}
+
+.calc-inline-status {
+  max-width: 22rem;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .calc-benefit-section {

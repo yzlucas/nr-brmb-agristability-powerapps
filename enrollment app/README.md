@@ -1,5 +1,17 @@
 # React + TypeScript + Vite
 
+## FARMS API connector
+
+The Power Apps FARMS API connector is configured in `power.config.json` and generated as `FARMSAPIService`.
+Use the app wrapper in `src/services/farmsApi.ts` from page or hook code:
+
+```ts
+import { farmsApi } from './services/farmsApi';
+
+const result = await farmsApi.checkHealth();
+const lineItems = await farmsApi.getLineItemsByProgramYear(2024);
+```
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

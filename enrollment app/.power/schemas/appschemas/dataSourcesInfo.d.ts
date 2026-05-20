@@ -696,6 +696,21 @@ export declare const dataSourcesInfo: {
                     };
                 };
             };
+            GetEnrolmentNoticeWorkflowCalculation: {
+                path: string;
+                method: string;
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    type: string;
+                }[];
+                responseInfo: {
+                    default: {
+                        type: string;
+                    };
+                };
+            };
             CreateOneLineItem: {
                 path: string;
                 method: string;

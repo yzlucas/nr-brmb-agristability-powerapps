@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CircleCheck, RefreshCw, Send } from 'lucide-react';
+import { CircleCheck, ExternalLink, RefreshCw, Send } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import { Link, useParams } from 'react-router-dom';
 import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
@@ -10,7 +10,9 @@ import { removeSaItemsFromCache } from './SupervisorApprovalPage';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import { MicrosoftDataverseService } from '../generated/services/MicrosoftDataverseService';
 import { QueueitemsService } from '../generated/services/QueueitemsService';
+import { Vsi_armsconfigurationsService } from '../generated/services/Vsi_armsconfigurationsService';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
+import { farmsApi } from '../services/farmsApi';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
 import { calculateVariance, formatCurrencyOr, formatVariancePercent, getTaskStatusLabel } from '../utils/helpers';
 
@@ -48,6 +50,22 @@ const getStringField = (record: unknown, field: string): string => {
 function normalizeGuid(value?: string | null): string {
   return (value ?? '').replace(/[{}]/g, '').trim().toLowerCase();
 }
+
+function normalizeUrlBase(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+async function getFarmsLegacyBaseUrl(): Promise<string | null> {
+  const result = await Vsi_armsconfigurationsService.getAll({
+    maxPageSize: 50,
+  });
+  const configRows = result.data ?? [];
+  const farmsUrl = configRows
+    .map(row => getStringField(row, 'cr4dd_FARMSURLNEW') || getStringField(row, 'cr4dd_farmsurlnew'))
+    .find((candidate): candidate is string => !!candidate);
+  return farmsUrl ? normalizeUrlBase(farmsUrl) : null;
+}
+
 async function getAccountFromXrm(accountId: string): Promise<Record<string, unknown> | null> {
   const candidates = [window, window.parent, window.top];
   for (const candidate of candidates) {
@@ -137,6 +155,8 @@ export function EnrolmentCalculationPage() {
   const [record, setRecord] = useState<Vsi_participantprogramyears | null>(null);
   const [participantPin, setParticipantPin] = useState('');
   const [participantPinLoading, setParticipantPinLoading] = useState(false);
+  const [farmsLegacyBaseUrl, setFarmsLegacyBaseUrl] = useState('');
+  const [farmsLegacyBaseUrlLoading, setFarmsLegacyBaseUrlLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -145,6 +165,8 @@ export function EnrolmentCalculationPage() {
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [farmsApiTestLoading, setFarmsApiTestLoading] = useState(false);
+  const [farmsApiTestMessage, setFarmsApiTestMessage] = useState('');
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -229,11 +251,40 @@ export function EnrolmentCalculationPage() {
     };
   }, [enrolmentId, refreshKey]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setFarmsLegacyBaseUrlLoading(true);
+    getFarmsLegacyBaseUrl()
+      .then((url) => {
+        if (!cancelled) setFarmsLegacyBaseUrl(url ?? '');
+      })
+      .catch(() => {
+        if (!cancelled) setFarmsLegacyBaseUrl('');
+      })
+      .finally(() => {
+        if (!cancelled) setFarmsLegacyBaseUrlLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
   const variance = useMemo(() => {
     return calculateVariance(record?.vsi_calculatedenfee, record?.vsi_previousyearcalculatedenfee);
   }, [record?.vsi_calculatedenfee, record?.vsi_previousyearcalculatedenfee]);
 
   const sharePointFolderUrl = record?.vsi_sharepointdocumentfolder;
+  const programYear = useMemo(() => getProgramYear(record), [record]);
+  const farmsScenarioUrl = useMemo(() => {
+    if (!farmsLegacyBaseUrl || !participantPin || !programYear) return '';
+    const params = new URLSearchParams({
+      pin: participantPin,
+      year: String(programYear),
+      refresh: 'true',
+    });
+    return `${farmsLegacyBaseUrl}/farm800.do?${params.toString()}`;
+  }, [farmsLegacyBaseUrl, participantPin, programYear]);
   const participantName = useMemo(() => {
     if (!record) return '';
     const raw = record as unknown as Record<string, unknown>;
@@ -243,11 +294,10 @@ export function EnrolmentCalculationPage() {
   }, [record]);
   const pin = participantPin || (participantPinLoading ? 'Loading...' : '-');
   const benefitMarginYears = useMemo(() => {
-    const programYear = getProgramYear(record);
     return Array.from({ length: BENEFIT_MARGIN_COUNT }, (_, index) => (
       programYear ? String(programYear - (BENEFIT_MARGIN_COUNT + 1) + index) : `Year ${index + 1}`
     ));
-  }, [record]);
+  }, [programYear]);
   const benefitMargins = useMemo(() => {
     if (!record) return [];
     return Array.from({ length: BENEFIT_MARGIN_COUNT }, (_, index) => {
@@ -338,6 +388,32 @@ export function EnrolmentCalculationPage() {
     }
   };
 
+  const handleFarmsApiTestClick = async () => {
+    setFarmsApiTestLoading(true);
+    setFarmsApiTestMessage('');
+    try {
+      const result = await farmsApi.getLineItemsByProgramYear(2025);
+      setFarmsApiTestMessage(result.success ? 'FARMS API lineItems test succeeded.' : `FARMS API lineItems test failed: ${result.error?.message ?? 'Unknown error'}`);
+    } catch (err) {
+      setFarmsApiTestMessage(err instanceof Error ? err.message : 'FARMS API lineItems test failed.');
+    } finally {
+      setFarmsApiTestLoading(false);
+    }
+  };
+
+  const handleFarmsWorkflowTestClick = async () => {
+    setFarmsApiTestLoading(true);
+    setFarmsApiTestMessage('');
+    try {
+      const result = await farmsApi.getEnrolmentNoticeWorkflowCalculation('3786019', 2021);
+      setFarmsApiTestMessage(result.success ? 'FARMS API workflow test succeeded.' : `FARMS API workflow test failed: ${result.error?.message ?? 'Unknown error'}`);
+    } catch (err) {
+      setFarmsApiTestMessage(err instanceof Error ? err.message : 'FARMS API workflow test failed.');
+    } finally {
+      setFarmsApiTestLoading(false);
+    }
+  };
+
   return (
     <section className="page-card calc-page">
       <div className="calc-record-header">
@@ -375,10 +451,50 @@ export function EnrolmentCalculationPage() {
               <CircleCheck size={14} aria-hidden="true" />
               {approving ? 'Approving...' : 'Approve'}
             </button>
+            <button
+              className="calc-outline-btn"
+              type="button"
+              onClick={() => void handleFarmsApiTestClick()}
+              disabled={farmsApiTestLoading}
+            >
+              <ExternalLink size={14} aria-hidden="true" />
+              {farmsApiTestLoading ? 'Calling FARMS...' : 'Test FARMS Line Items'}
+            </button>
+            <button
+              className="calc-outline-btn"
+              type="button"
+              onClick={() => void handleFarmsWorkflowTestClick()}
+              disabled={farmsApiTestLoading}
+            >
+              <ExternalLink size={14} aria-hidden="true" />
+              Test FARMS Workflow
+            </button>
+            {farmsApiTestMessage && <span className="calc-inline-status">{farmsApiTestMessage}</span>}
           </div>
         </div>
 
         <div className="calc-sharepoint-action">
+          {farmsScenarioUrl ? (
+            <a
+              className="calc-outline-btn calc-sharepoint-btn"
+              href={farmsScenarioUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink size={14} aria-hidden="true" />
+              Open a Scenario in FARMS
+            </a>
+          ) : (
+            <button
+              className="calc-outline-btn calc-sharepoint-btn"
+              type="button"
+              disabled
+              title={loading || participantPinLoading || farmsLegacyBaseUrlLoading ? 'Loading FARMS scenario link' : 'FARMS URL, PIN, or program year is missing for this enrolment'}
+            >
+              <ExternalLink size={14} aria-hidden="true" />
+              Open a Scenario in FARMS
+            </button>
+          )}
           {sharePointFolderUrl ? (
             <a
               className="calc-outline-btn calc-sharepoint-btn"

@@ -4802,6 +4802,35 @@ export const dataSourcesInfo = {
           }
         }
       },
+      "GetEnrolmentNoticeWorkflowCalculation": {
+        "path": "/{connectionId}/calculations/enrolment-notice-workflow",
+        "method": "GET",
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "participantPin",
+            "in": "query",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "programYear",
+            "in": "query",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responseInfo": {
+          "default": {
+            "type": "object"
+          }
+        }
+      },
       "CreateOneLineItem": {
         "path": "/{connectionId}/lineItems",
         "method": "POST",
