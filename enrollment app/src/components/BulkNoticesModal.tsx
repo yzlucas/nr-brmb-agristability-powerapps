@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 
-import { HTTPWorkflowsService } from '../generated/services/HTTPWorkflowsService';
+import { GenerateBulkEnrolmentNoticesService } from '../generated/services/GenerateBulkEnrolmentNoticesService';
 
 export function BulkNoticesModal({
   selectedIds,
@@ -65,12 +65,12 @@ export function BulkNoticesModal({
                   try {
                     const allIds = Array.from(selectedIds);
 
-                    const result = await HTTPWorkflowsService.BulkENFlow({
-                      EnrolmentIds: allIds,
-                      EnrolmentNoticeSentDate: bulkSentDate,
-                      EnrolmentFeeDate: bulkFeeDate,
-                      Merge: bulkMergedPdf,
-                    }, '2024-10-01');
+                    const result = await GenerateBulkEnrolmentNoticesService.Run({
+                      text: allIds.join(','),
+                      date: bulkSentDate,
+                      date_1: bulkFeeDate,
+                      boolean: bulkMergedPdf,
+                    });
                     if (!result.success) {
                       const msg = result.error instanceof Error
                         ? result.error.message
