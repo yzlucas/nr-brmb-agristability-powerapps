@@ -1203,7 +1203,6 @@ export function SupervisorApprovalPage() {
                 {pageRows.map((row, index) => {
                   const item = row.item;
                   const itemId = row.itemId;
-                  const hasCalculatedFee = item.vsi_calculatedenfee != null;
                   const adminFee = item.vsi_administrativecostsharingfee ?? 0;
                   const calcFeeTotal = item.vsi_calculatedenfee != null ? item.vsi_calculatedenfee + adminFee : null;
                   const variance = item.vsi_calculatedenfee != null && item.vsi_variancecalculation != null ? item.vsi_variancecalculation * 100 : null;
@@ -1271,9 +1270,7 @@ export function SupervisorApprovalPage() {
                           return (
                             <td key={key}>
                               <span className="sa-fee-cell">
-                                {itemId && hasCalculatedFee
-                                  ? <Link className="sa-fee-amount sa-fee-link" to={`/calculation/supervisor/${itemId}`}>{formatCurrencyOr(calcFeeTotal, '—')}</Link>
-                                  : <span className="sa-fee-amount">{formatCurrencyOr(calcFeeTotal, '—')}</span>}
+                                <span className="sa-fee-amount">{formatCurrencyOr(calcFeeTotal, '—')}</span>
                                 {variance != null ? <VariancePill variance={variance} /> : null}
                               </span>
                             </td>
@@ -1318,7 +1315,7 @@ export function SupervisorApprovalPage() {
                                 data-tooltip="Go to calculation"
                                 className="sa-calc-link"
                               >
-                                <Calculator size={16} />
+                                <Calculator size={20} />
                               </Link>
                             )
                             : (
@@ -1327,7 +1324,7 @@ export function SupervisorApprovalPage() {
                                 data-tooltip="Go to calculation"
                                 className="sa-calc-link sa-calc-link-disabled"
                               >
-                                <Calculator size={16} className="sa-action-icon-disabled" />
+                                <Calculator size={20} className="sa-action-icon-disabled" />
                               </span>
                             )}
                         </div>

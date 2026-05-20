@@ -19,14 +19,6 @@
       "sharedConnectionId": "/providers/Microsoft.PowerApps/apis/shared_farms-20api-5fe39d1efd21a19d13-5f571039b465579741/connections/7f0dbaddf90e498e82c553b27272a705",
       "dataSets": {}
     },
-    "03e87dca-17c0-4d4f-a5ff-79c8ad62d01b": {
-      "id": "/providers/Microsoft.PowerApps/apis/shared_http-20workflows-5fe39d1efd21a19d13-5f571039b465579741",
-      "displayName": "HTTP Workflows",
-      "dataSources": [
-        "http_20workflows_5fe39d1efd21a19d13_5f571039b465579741"
-      ],
-      "dataSets": {}
-    },
     "c246c6d9-1ba9-45b3-a6c8-aea93ebb3b41": {
       "id": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
       "displayName": "Microsoft Dataverse",
@@ -42,6 +34,40 @@
         "farms_20api_5fe39d1efd21a19d13_5f571039b465579741"
       ],
       "authenticationType": "oAuthClientCredentials",
+      "dataSets": {}
+    },
+    "61268f8d-adbf-40ca-9b88-573c367af652": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+      "displayName": "Logic flows",
+      "dataSources": [
+        "generate45dayletter"
+      ],
+      "workflowDetails": {
+        "workflowEntityId": "d8c39975-df4f-f111-bec6-70a8a5abd235",
+        "workflowDisplayName": "Generate 45 Day Letter",
+        "workflowName": "87204e51-864d-4bfc-aae4-6440dafa5087"
+      }
+    },
+    "3be5d05d-ec97-426e-ba6f-3a8ff094ec58": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+      "displayName": "Logic flows",
+      "dataSources": [
+        "generatebulkenrolmentnotices"
+      ],
+      "workflowDetails": {
+        "workflowEntityId": "228e6e3f-da27-ee11-9965-0022483cb0d4",
+        "workflowDisplayName": "Generate Bulk Enrolment Notices",
+        "workflowName": "1659a9c0-1436-b7b2-d918-2b5b3fc5e819"
+      }
+    },
+    "fa90f9f5-2a53-46ae-8466-275a83b3fbc7": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+      "displayName": "Microsoft Dataverse",
+      "dataSources": [
+        "commondataserviceforapps"
+      ],
+      "authenticationType": "ServicePrincipalOauth",
+      "sharedConnectionId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps/connections/b05319f6f3244385ac9d9959391a2970",
       "dataSets": {}
     }
   },
@@ -106,6 +132,10 @@
         "accounts": {
           "entitySetName": "accounts",
           "logicalName": "account"
+        },
+        "programyears": {
+          "entitySetName": "vsi_programyears",
+          "logicalName": "vsi_programyear"
         }
       },
       "version": "v9.0",

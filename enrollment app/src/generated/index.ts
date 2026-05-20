@@ -7,7 +7,8 @@
 export * as AccountsModel from './models/AccountsModel';
 export * as CommonModels from './models/CommonModels';
 export * as FARMSAPIModel from './models/FARMSAPIModel';
-export * as HTTPWorkflowsModel from './models/HTTPWorkflowsModel';
+export * as Generate45DayLetterModel from './models/Generate45DayLetterModel';
+export * as GenerateBulkEnrolmentNoticesModel from './models/GenerateBulkEnrolmentNoticesModel';
 export * as MicrosoftDataverseModel from './models/MicrosoftDataverseModel';
 export * as Office365UsersModel from './models/Office365UsersModel';
 export * as QueueitemsModel from './models/QueueitemsModel';
@@ -23,11 +24,13 @@ export * as UserqueriesModel from './models/UserqueriesModel';
 export * as Vsi_armsconfigurationsModel from './models/Vsi_armsconfigurationsModel';
 export * as Vsi_enrolmenthistoriesModel from './models/Vsi_enrolmenthistoriesModel';
 export * as Vsi_participantprogramyearsModel from './models/Vsi_participantprogramyearsModel';
+export * as Vsi_programyearsModel from './models/Vsi_programyearsModel';
 
 // Services
 export * from './services/AccountsService';
 export * from './services/FARMSAPIService';
-export * from './services/HTTPWorkflowsService';
+export * from './services/Generate45DayLetterService';
+export * from './services/GenerateBulkEnrolmentNoticesService';
 export * from './services/MicrosoftDataverseService';
 export * from './services/Office365UsersService';
 export * from './services/QueueitemsService';
@@ -43,3 +46,4 @@ export * from './services/UserqueriesService';
 export * from './services/Vsi_armsconfigurationsService';
 export * from './services/Vsi_enrolmenthistoriesService';
 export * from './services/Vsi_participantprogramyearsService';
+export * from './services/Vsi_programyearsService';

@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 import type { DragEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { Calculator } from 'lucide-react';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import type { FilterOperator, SortDir, SortKey } from '../types/enrollment';
 import { ALL_COLUMNS } from '../constants/columns';
@@ -169,6 +171,7 @@ export function EnrolmentDataTable({
                 />
               );
             })}
+            <th className="dt-th-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -207,6 +210,26 @@ export function EnrolmentDataTable({
                     const rowWithSource = { ...row, _source: 'dashboard' };
                     return renderCell(key, rowWithSource, raw, avatarUrls, coreAppId, coreBaseUrl);
                   })}
+                  <td className="dt-td-actions">
+                    <div className="dt-row-actions">
+                    {row.vsi_participantprogramyearid
+                      ? (
+                        <Link
+                          to={`/calculation/dashboard/${row.vsi_participantprogramyearid}`}
+                          aria-label="Go to calculation"
+                          data-tooltip="Go to calculation"
+                          className="sa-calc-link"
+                        >
+                          <Calculator size={20} />
+                        </Link>
+                      )
+                      : (
+                        <span className="sa-calc-link sa-calc-link-disabled" aria-label="Go to calculation">
+                          <Calculator size={20} className="sa-action-icon-disabled" />
+                        </span>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               );
             })
