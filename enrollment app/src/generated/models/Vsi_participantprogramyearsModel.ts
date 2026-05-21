@@ -110,8 +110,10 @@ export interface Vsi_participantprogramyearsBase {
   "vsi_FeeModifiedBy@odata.bind"?: string;
   vsi_filereceiveddate?: string;
   vsi_firstmonthlateinformationfee?: number;
+  vsi_fortyfivedaycounterpaused?: boolean;
   vsi_fortyfivedaylettersent?: string;
   vsi_fortyfivedayletterstartdate?: string;
+  vsi_fortyfivedaypausedate?: string;
   vsi_fullyprovinciallyfunded?: boolean;
   vsi_generateddate?: string;
   vsi_generatedfromenwscenario: boolean;
@@ -203,6 +205,7 @@ export interface Vsi_participantprogramyears extends Vsi_participantprogramyears
   vsi_feemodifiedbyname?: string;
   vsi_feemodifiedbyyominame?: string;
   vsi_firstmonthlateinformationfee_base?: number;
+  vsi_fortyfivedaycounterpausedname?: string;
   vsi_fullyprovinciallyfundedname?: string;
   vsi_generatedfromenwscenarioname?: string;
   vsi_haspartnersname?: string;

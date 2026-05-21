@@ -56,7 +56,7 @@
 
 .details-header-grid {
   display: grid;
-  grid-template-columns: 1.1fr 0.8fr 0.7fr 1fr;
+  grid-template-columns: 1.1fr 0.8fr 0.7fr auto 1fr;
   gap: 0.85rem 1.4rem;
   align-items: end;
 }
@@ -114,15 +114,34 @@
   color: #e55a5a;
 }
 
-.details-link {
-  color: #2f80ed;
-  text-decoration: underline;
-  font-size: 0.88rem;
-  font-weight: 600;
+/* 45-day counter card embedded in the header band */
+.details-fortyfiveday-cell {
+  justify-content: flex-end;
 }
 
-.details-link:hover {
-  color: #1e6bd6;
+.details-fortyfiveday-card {
+  padding: 0.4rem 0.75rem !important;
+  gap: 0.25rem !important;
+  min-width: 0 !important;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-title {
+  font-size: 0.68rem;
+  margin-bottom: 0;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-grid {
+  grid-template-columns: repeat(4, auto);
+  gap: 0.15rem 1.1rem;
+  margin-bottom: 0;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-label {
+  font-size: 0.62rem;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-value {
+  font-size: 0.75rem;
 }
 
 .details-primary-history {

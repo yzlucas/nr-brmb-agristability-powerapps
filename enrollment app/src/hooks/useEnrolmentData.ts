@@ -121,6 +121,8 @@ export function useEnrolmentData() {
           'vsi_manualreview',
           'vsi_enrolmentnoticesentdate',
           'vsi_fortyfivedayletterstartdate',
+          'vsi_fortyfivedaycounterpaused',
+          'vsi_fortyfivedaypausedate',
           'vsi_filereceiveddate',
           'vsi_enrolmentfeespaiddate',
           'vsi_prevyearpartnotverified',

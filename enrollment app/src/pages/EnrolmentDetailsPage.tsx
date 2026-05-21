@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import {
   Vsi_participantprogramyearsvsi_enrolmentstatus,
   type Vsi_participantprogramyears,
@@ -7,6 +8,7 @@ import {
   type Vsi_participantprogramyearsvsi_enrolmentstatus as EnrolmentStatusValue,
 } from '../generated/models/Vsi_participantprogramyearsModel';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
+import { formatEnrolmentStatusDisplay } from '../utils/helpers';
 
 type DateField =
   | 'vsi_enrolmentnoticesentdate'
@@ -57,6 +59,9 @@ const DETAIL_SELECT = [
   'vsi_latepaymentfee',
   'vsi_adjustedlateenrolmentfee',
   '_vsi_feemodifiedby_value',
+  'vsi_fortyfivedayletterstartdate',
+  'vsi_fortyfivedaycounterpaused',
+  'vsi_fortyfivedaypausedate',
 ] as const;
 
 const formatCad = (value: number | undefined): string => {
@@ -160,7 +165,7 @@ export function EnrolmentDetailsPage() {
   const statusOptions = useMemo(
     () => Object.entries(Vsi_participantprogramyearsvsi_enrolmentstatus).map(([value, label]) => ({
       value: Number(value) as EnrolmentStatusValue,
-      label,
+      label: formatEnrolmentStatusDisplay(label),
     })),
     [],
   );
@@ -222,6 +227,21 @@ export function EnrolmentDetailsPage() {
 
     if (formState.enrolmentStatus !== record.vsi_enrolmentstatus) {
       changedFields.vsi_enrolmentstatus = formState.enrolmentStatus;
+
+      // Clear 45-day fields when moving away from the 45 Day Letter status
+      if (record.vsi_enrolmentstatus === 865520010 && formState.enrolmentStatus !== 865520010) {
+        changedFields.vsi_fortyfivedayletterstartdate = null as unknown as string;
+        changedFields.vsi_fortyfivedaylettersent = null as unknown as string;
+        changedFields.vsi_fortyfivedaycounterpaused = null as unknown as boolean;
+        changedFields.vsi_fortyfivedaypausedate = null as unknown as string;
+      }
+
+      // Set start date immediately when changing TO 45 Day Letter so the counter shows right away
+      if (formState.enrolmentStatus === 865520010 && !record.vsi_fortyfivedayletterstartdate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        changedFields.vsi_fortyfivedayletterstartdate = today.toISOString();
+      }
     }
     if (formState.vsi_fullyprovinciallyfunded !== Boolean(record.vsi_fullyprovinciallyfunded)) {
       changedFields.vsi_fullyprovinciallyfunded = formState.vsi_fullyprovinciallyfunded;
@@ -318,9 +338,68 @@ export function EnrolmentDetailsPage() {
               </label>
             </div>
             <div className="details-field details-link-field">
-              {record.vsi_sharepointdocumentfolder
-                ? <a className="details-link" href={record.vsi_sharepointdocumentfolder} target="_blank" rel="noopener noreferrer">SharePoint Document Folder</a>
-                : <span className="details-value-muted">---</span>}
+              {record.vsi_sharepointdocumentfolder ? (
+                <a
+                  className="calc-outline-btn calc-sharepoint-btn"
+                  href={record.vsi_sharepointdocumentfolder}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
+                  Go to SharePoint
+                </a>
+              ) : (
+                <button
+                  className="calc-outline-btn calc-sharepoint-btn"
+                  type="button"
+                  disabled
+                  title="No SharePoint folder link found for this enrolment"
+                >
+                  <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
+                  Go to SharePoint
+                </button>
+              )}
+            </div>
+            <div className="details-field details-link-field details-fortyfiveday-cell">
+              {record.vsi_enrolmentstatus === 865520010 && (() => {
+                const startDate = record.vsi_fortyfivedayletterstartdate as string | undefined;
+                const paused = !!(record as unknown as Record<string, unknown>)['vsi_fortyfivedaycounterpaused'];
+                const pauseDate = (record as unknown as Record<string, unknown>)['vsi_fortyfivedaypausedate'] as string | undefined;
+                const referenceMs = paused && pauseDate ? new Date(pauseDate).getTime() : Date.now();
+                const elapsedDays = startDate
+                  ? Math.floor((referenceMs - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+                  : null;
+                const remainingDays = elapsedDays !== null ? 45 - elapsedDays : null;
+                return (
+                  <div className="calc-fortyfiveday-card details-fortyfiveday-card" aria-label="45-day letter counter">
+                    <div className="calc-fortyfiveday-title">45-Day Counter</div>
+                    <div className="calc-fortyfiveday-grid">
+                      <div>
+                        <div className="calc-fortyfiveday-label">Start Date</div>
+                        <div className="calc-fortyfiveday-value">{startDate ? new Date(startDate).toLocaleDateString() : '-'}</div>
+                      </div>
+                      <div>
+                        <div className="calc-fortyfiveday-label">Elapsed</div>
+                        <div className="calc-fortyfiveday-value">{elapsedDays !== null ? `${elapsedDays} / 45 days` : '-'}</div>
+                      </div>
+                      <div>
+                        <div className="calc-fortyfiveday-label">Remaining</div>
+                        <div className={`calc-fortyfiveday-value${remainingDays !== null && remainingDays <= 10 && !paused ? ' calc-fortyfiveday-warning' : ''}`}>
+                          {remainingDays !== null ? `${remainingDays} days` : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="calc-fortyfiveday-label">Status</div>
+                        <div className="calc-fortyfiveday-value">
+                          {paused
+                            ? <span className="fortyfiveday-badge fortyfiveday-badge-paused">⏸ Paused{pauseDate ? ` since ${new Date(pauseDate).toLocaleDateString()}` : ''}</span>
+                            : <span className="fortyfiveday-badge fortyfiveday-badge-running">▶ Running</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

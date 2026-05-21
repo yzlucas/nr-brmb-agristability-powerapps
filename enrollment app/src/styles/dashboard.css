@@ -260,6 +260,11 @@
   background: #fdecec;
 }
 
+.days-badge.badge-paused {
+  color: #92400e;
+  background: #fef3c7;
+}
+
 /* Calculated fee */
 .cell-fee {
   font-variant-numeric: tabular-nums;
