@@ -41,14 +41,24 @@
       "displayName": "Logic flows",
       "dataSources": [
         "generate45dayletter"
-      ]
+      ],
+      "workflowDetails": {
+        "workflowEntityId": "d8c39975-df4f-f111-bec6-70a8a5abd235",
+        "workflowDisplayName": "Generate 45 Day Letter",
+        "workflowName": "87204e51-864d-4bfc-aae4-6440dafa5087"
+      }
     },
     "3be5d05d-ec97-426e-ba6f-3a8ff094ec58": {
       "id": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
       "displayName": "Logic flows",
       "dataSources": [
         "generatebulkenrolmentnotices"
-      ]
+      ],
+      "workflowDetails": {
+        "workflowEntityId": "228e6e3f-da27-ee11-9965-0022483cb0d4",
+        "workflowDisplayName": "Generate Bulk Enrolment Notices",
+        "workflowName": "1659a9c0-1436-b7b2-d918-2b5b3fc5e819"
+      }
     },
     "fa90f9f5-2a53-46ae-8466-275a83b3fbc7": {
       "id": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
