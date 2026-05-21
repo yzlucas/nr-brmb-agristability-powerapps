@@ -12,8 +12,255 @@
     "isCustomApi": true,
     "blobUrisAreProxied": false,
     "connectionParameterSets": {
-      "uiDefinition": {},
-      "values": []
+      "uiDefinition": {
+        "displayName": "Authentication Type",
+        "description": "Type of authentication to be used."
+      },
+      "values": [
+        {
+          "name": "oauth2-auth",
+          "uiDefinition": {
+            "displayName": "OAuth Connection",
+            "description": "OAuth Connection"
+          },
+          "parameters": {
+            "token": {
+              "type": "oauthSetting",
+              "oAuthSettings": {
+                "identityProvider": "aad",
+                "clientId": "dd331d7c-1907-4f37-83e3-9543c9242652",
+                "scopes": [
+                  "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
+                ],
+                "redirectMode": "GlobalPerConnector",
+                "redirectUrl": "https://global.consent.azure-apim.net/redirect/farms-20api-5fe39d1efd21a19d13-5f571039b465579741",
+                "properties": {
+                  "IsFirstParty": "False",
+                  "AzureActiveDirectoryResourceId": "api://dd331d7c-1907-4f37-83e3-9543c9242652",
+                  "IsOnbehalfofLoginSupported": true
+                },
+                "customParameters": {
+                  "grantType": {
+                    "value": "code"
+                  },
+                  "LoginUri": {
+                    "value": "https://login.microsoftonline.com"
+                  },
+                  "TenantId": {
+                    "value": "6fdb5200-3d0d-4a8a-b036-d3685e359adc"
+                  },
+                  "ResourceUri": {
+                    "value": "api://dd331d7c-1907-4f37-83e3-9543c9242652"
+                  },
+                  "EnableOnbehalfOfLogin": {
+                    "value": "false"
+                  }
+                }
+              },
+              "uiDefinition": {
+                "displayName": "OAuth Connection",
+                "description": "OAuth Connection",
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false"
+                }
+              }
+            }
+          },
+          "metadata": {
+            "allowSharing": false
+          }
+        },
+        {
+          "name": "oAuthClientCredentials",
+          "uiDefinition": {
+            "displayName": "Service Principal Connection",
+            "description": "Service Principal Connection"
+          },
+          "parameters": {
+            "token": {
+              "type": "oauthSetting",
+              "oAuthSettings": {
+                "identityProvider": "aad",
+                "clientId": "dd331d7c-1907-4f37-83e3-9543c9242652",
+                "scopes": [
+                  "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
+                ],
+                "redirectMode": "GlobalPerConnector",
+                "redirectUrl": "https://global.consent.azure-apim.net/redirect/farms-20api-5fe39d1efd21a19d13-5f571039b465579741",
+                "properties": {
+                  "IsFirstParty": "False",
+                  "AzureActiveDirectoryResourceId": "api://dd331d7c-1907-4f37-83e3-9543c9242652",
+                  "IsOnbehalfofLoginSupported": true
+                },
+                "customParameters": {
+                  "grantType": {
+                    "value": "client_credentials"
+                  },
+                  "LoginUri": {
+                    "value": "https://login.microsoftonline.com"
+                  },
+                  "TenantId": {
+                    "value": "6fdb5200-3d0d-4a8a-b036-d3685e359adc"
+                  },
+                  "ResourceUri": {
+                    "value": "api://dd331d7c-1907-4f37-83e3-9543c9242652"
+                  },
+                  "EnableOnbehalfOfLogin": {
+                    "value": "false"
+                  }
+                }
+              },
+              "uiDefinition": {
+                "displayName": "Service Principal Connection",
+                "description": "Service Principal Connection",
+                "constraints": {
+                  "required": "false",
+                  "hidden": "true"
+                }
+              }
+            },
+            "token:clientId": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Client ID",
+                "schema": {
+                  "type": "string",
+                  "description": "Client (or Application) ID of your application"
+                },
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false"
+                }
+              }
+            },
+            "token:clientSecret": {
+              "type": "securestring",
+              "uiDefinition": {
+                "displayName": "Client Secret",
+                "schema": {
+                  "type": "securestring",
+                  "description": "Client secret of your application"
+                },
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false"
+                }
+              }
+            },
+            "token:TenantId": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Tenant",
+                "schema": {
+                  "type": "string",
+                  "description": "The tenant ID of your application"
+                },
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false"
+                }
+              }
+            }
+          },
+          "metadata": {
+            "allowSharing": true
+          }
+        },
+        {
+          "name": "certOauth",
+          "uiDefinition": {
+            "displayName": "Client Certificate Auth",
+            "description": "Provide Microsoft Entra ID credentials using PFX certificate and password"
+          },
+          "parameters": {
+            "token": {
+              "type": "oauthSetting",
+              "oAuthSettings": {
+                "identityProvider": "aad",
+                "clientId": "dd331d7c-1907-4f37-83e3-9543c9242652",
+                "scopes": [
+                  "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
+                ],
+                "redirectMode": "GlobalPerConnector",
+                "redirectUrl": "https://global.consent.azure-apim.net/redirect/farms-20api-5fe39d1efd21a19d13-5f571039b465579741",
+                "properties": {
+                  "IsFirstParty": "False",
+                  "AzureActiveDirectoryResourceId": "api://dd331d7c-1907-4f37-83e3-9543c9242652",
+                  "IsOnbehalfofLoginSupported": true
+                },
+                "customParameters": {
+                  "grantType": {
+                    "value": "client_credentials"
+                  },
+                  "LoginUri": {
+                    "value": "https://login.microsoftonline.com"
+                  },
+                  "TenantId": {
+                    "value": "6fdb5200-3d0d-4a8a-b036-d3685e359adc"
+                  },
+                  "ResourceUri": {
+                    "value": "api://dd331d7c-1907-4f37-83e3-9543c9242652"
+                  },
+                  "EnableOnbehalfOfLogin": {
+                    "value": "false"
+                  }
+                }
+              },
+              "uiDefinition": {
+                "displayName": "Login your Credentials",
+                "description": "Login your Credentials",
+                "constraints": {
+                  "required": "false",
+                  "hidden": "true"
+                }
+              }
+            },
+            "token:clientId": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Client ID",
+                "schema": {
+                  "type": "string",
+                  "description": "Client (or Application) ID of your application"
+                },
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false"
+                }
+              }
+            },
+            "token:clientCertificateSecret": {
+              "type": "clientCertificate",
+              "uiDefinition": {
+                "displayName": "Client certificate secret",
+                "description": "The client certificate secret allowed by this application",
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false"
+                }
+              }
+            },
+            "token:TenantId": {
+              "type": "string",
+              "uiDefinition": {
+                "displayName": "Tenant",
+                "schema": {
+                  "type": "string",
+                  "description": "The tenant ID of your application"
+                },
+                "constraints": {
+                  "required": "true",
+                  "hidden": "false"
+                }
+              }
+            }
+          },
+          "metadata": {
+            "allowSharing": true
+          }
+        }
+      ]
     },
     "connectionParameters": {
       "token": {
@@ -3906,11 +4153,37 @@
             "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default": "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
           },
           "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize"
+        },
+        "oAuthClientCredentials": {
+          "type": "oauth2",
+          "flow": "application",
+          "tokenUrl": "https://login.windows.net/common/oauth2/authorize",
+          "scopes": {
+            "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default": "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
+          }
+        },
+        "certOauth": {
+          "type": "oauth2",
+          "flow": "application",
+          "tokenUrl": "https://login.windows.net/common/oauth2/authorize",
+          "scopes": {
+            "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default": "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
+          }
         }
       },
       "security": [
         {
           "oauth2-auth": [
+            "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
+          ]
+        },
+        {
+          "oAuthClientCredentials": [
+            "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
+          ]
+        },
+        {
+          "certOauth": [
             "api://dd331d7c-1907-4f37-83e3-9543c9242652/.default"
           ]
         }
@@ -3937,15 +4210,15 @@
       "parameters": {},
       "useNewApimVersion": "True",
       "createdBy": "{\"id\":\"7fd1189f-acfa-4610-918b-81f49cd5a962\",\"displayName\":\"XT:Sargeant, Melinda LWRS:IN\",\"email\":\"msargeant@vividsolutions.com\",\"type\":\"User\",\"tenantId\":\"6fdb5200-3d0d-4a8a-b036-d3685e359adc\",\"userPrincipalName\":\"MSARGEAN@gov.bc.ca\"}",
-      "modifiedBy": "{\"id\":\"24eb9fed-c0b8-4961-8ee9-81a78c149d0b\",\"displayName\":\"Li, Lucas AF:EX\",\"email\":\"Lucas.Li@gov.bc.ca\",\"type\":\"User\",\"tenantId\":\"6fdb5200-3d0d-4a8a-b036-d3685e359adc\",\"userPrincipalName\":\"Lucas.Li@gov.bc.ca\"}",
+      "modifiedBy": "{\"id\":\"7fd1189f-acfa-4610-918b-81f49cd5a962\",\"displayName\":\"Sargeant, Melinda WLRS:EX\",\"email\":\"Melinda.Sargeant@gov.bc.ca\",\"type\":\"User\",\"tenantId\":\"6fdb5200-3d0d-4a8a-b036-d3685e359adc\",\"userPrincipalName\":\"Melinda.Sargeant@gov.bc.ca\"}",
       "allowSharing": false,
       "rateLimit": 0
     },
     "capabilities": [],
     "description": "FARMS API DEV - this is the custom connector to the FARMS API Dev Environment",
     "apiDefinitions": {
-      "originalSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/farms-20api-5fe39d1efd21a19d13-5f571039b465579741.json_original?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-05-19T13%3A14%3A25Z&ske=2026-05-20T13%3A14%3A25Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-05-20T03%3A12%3A18Z&sr=b&sp=r&sig=U0L2u%2FYC6et%2FujkCTrOLY93EPc8TZm8hu5O2AbHHXYk%3D",
-      "modifiedSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/farms-20api-5fe39d1efd21a19d13-5f571039b465579741.json?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-05-19T13%3A14%3A25Z&ske=2026-05-20T13%3A14%3A25Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-05-20T03%3A12%3A18Z&sr=b&sp=r&sig=5yMUoKk7bcxrYGRVPqZnonRHSyCvs2wJLmJ4s6r46Sk%3D"
+      "originalSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/farms-20api-5fe39d1efd21a19d13-5f571039b465579741.json_original?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-05-20T03%3A25%3A39Z&ske=2026-05-21T03%3A25%3A39Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-05-20T18%3A28%3A04Z&sr=b&sp=r&sig=gVr1TrTgvv9jw%2FrlBVI5ZjW%2FVhr%2Bv1AmTsnwCgeTK30%3D",
+      "modifiedSwaggerUrl": "https://canl001ccaext.blob.core.windows.net/api-swagger-files/farms-20api-5fe39d1efd21a19d13-5f571039b465579741.json?skoid=1480fa8b-0bc3-4897-9aea-803edfb99451&sktid=33e01921-4d64-4f8c-a055-5bdaffd5e33d&skt=2026-05-20T03%3A25%3A39Z&ske=2026-05-21T03%3A25%3A39Z&sks=b&skv=2025-01-05&sv=2025-01-05&spr=https&se=2026-05-20T18%3A28%3A04Z&sr=b&sp=r&sig=sUQ0Y3V1tlGlFP3Iq189TLvKo3O%2BfM35xAePKqp6VHc%3D"
     },
     "policyTemplateInstances": [],
     "backendService": {
@@ -3960,15 +4233,15 @@
       "userPrincipalName": "MSARGEAN@gov.bc.ca"
     },
     "modifiedBy": {
-      "id": "24eb9fed-c0b8-4961-8ee9-81a78c149d0b",
-      "displayName": "Li, Lucas AF:EX",
-      "email": "Lucas.Li@gov.bc.ca",
+      "id": "7fd1189f-acfa-4610-918b-81f49cd5a962",
+      "displayName": "Sargeant, Melinda WLRS:EX",
+      "email": "Melinda.Sargeant@gov.bc.ca",
       "type": "User",
       "tenantId": "6fdb5200-3d0d-4a8a-b036-d3685e359adc",
-      "userPrincipalName": "Lucas.Li@gov.bc.ca"
+      "userPrincipalName": "Melinda.Sargeant@gov.bc.ca"
     },
     "createdTime": "2025-04-17T18:52:31.7649801Z",
-    "changedTime": "2026-05-20T02:11:45.7103917Z",
+    "changedTime": "2026-05-20T17:26:51.115302Z",
     "environment": {
       "id": "/providers/Microsoft.PowerApps/environments/dcd88fe8-d919-ee82-8313-8376a1e413f4",
       "name": "dcd88fe8-d919-ee82-8313-8376a1e413f4"
