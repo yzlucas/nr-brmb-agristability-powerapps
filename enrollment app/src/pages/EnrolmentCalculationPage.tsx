@@ -168,6 +168,8 @@ export function EnrolmentCalculationPage() {
   const [farmsApiTestMessage,] = useState('');
   const [show45DayModal, setShow45DayModal] = useState(false);
   const [letterSentMessage, setLetterSentMessage] = useState<string | null>(null);
+  const [counterActionLoading, setCounterActionLoading] = useState(false);
+  const [counterActionError, setCounterActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -206,6 +208,10 @@ export function EnrolmentCalculationPage() {
             'vsi_programyearmargin4used',
             'vsi_programyearmargin5',
             'vsi_programyearmargin5used',
+            'vsi_fortyfivedayletterstartdate',
+            'vsi_fortyfivedaylettersent',
+            'vsi_fortyfivedaycounterpaused',
+            'vsi_fortyfivedaypausedate',
           ],
         });
 
@@ -323,6 +329,57 @@ export function EnrolmentCalculationPage() {
     return nextUser;
   };
 
+  const handle45DayPause = async () => {
+    if (!record || !enrolmentId) return;
+    setCounterActionLoading(true);
+    setCounterActionError(null);
+    try {
+      const today = new Date().toISOString();
+      const patch: Partial<Vsi_participantprogramyears> = {
+        vsi_fortyfivedaycounterpaused: true,
+        vsi_fortyfivedaypausedate: today,
+      };
+      const result = await Vsi_participantprogramyearsService.update(enrolmentId, patch);
+      if (!result.success) throw new Error(result.error?.message ?? 'Failed to pause counter.');
+      setRecord(prev => prev ? { ...prev, ...patch } : prev);
+      patchEnrolmentCache([{ id: enrolmentId, fields: patch }]);
+    } catch (err) {
+      setCounterActionError(err instanceof Error ? err.message : 'Failed to pause counter.');
+    } finally {
+      setCounterActionLoading(false);
+    }
+  };
+
+  const handle45DayResume = async () => {
+    if (!record || !enrolmentId) return;
+    setCounterActionLoading(true);
+    setCounterActionError(null);
+    try {
+      const pauseDate = record.vsi_fortyfivedaypausedate;
+      const startDate = record.vsi_fortyfivedayletterstartdate;
+      if (!pauseDate || !startDate) throw new Error('Cannot resume: pause date or start date is missing.');
+      const pausedDays = Math.floor((Date.now() - new Date(pauseDate).getTime()) / (1000 * 60 * 60 * 24));
+      const newStartDate = new Date(new Date(startDate).getTime() + pausedDays * 24 * 60 * 60 * 1000).toISOString();
+      const resumeResult = await Vsi_participantprogramyearsService.update(enrolmentId, {
+        vsi_fortyfivedaycounterpaused: false,
+        vsi_fortyfivedayletterstartdate: newStartDate,
+        vsi_fortyfivedaypausedate: null as unknown as string,
+      });
+      if (!resumeResult.success) throw new Error(resumeResult.error?.message ?? 'Failed to resume counter.');
+      const patch: Partial<Vsi_participantprogramyears> = {
+        vsi_fortyfivedaycounterpaused: false,
+        vsi_fortyfivedaypausedate: undefined,
+        vsi_fortyfivedayletterstartdate: newStartDate,
+      };
+      setRecord(prev => prev ? { ...prev, ...patch } : prev);
+      patchEnrolmentCache([{ id: enrolmentId, fields: patch }]);
+    } catch (err) {
+      setCounterActionError(err instanceof Error ? err.message : 'Failed to resume counter.');
+    } finally {
+      setCounterActionLoading(false);
+    }
+  };
+
   const handleApproveClick = async () => {
     if (!record) return;
 
@@ -398,54 +455,100 @@ export function EnrolmentCalculationPage() {
             <span>PIN:</span> {pin}
           </div>
           <h1 className="calc-participant-name">{participantName || (loading ? 'Loading...' : '-')}</h1>
-          <div className="calc-primary-actions">
-            <button className="calc-outline-btn" type="button" onClick={() => setShow45DayModal(true)}>Send 45-Day Letter</button>
-            <button
-              className="calc-outline-btn"
-              type="button"
-              onClick={() => setRefreshKey(prev => prev + 1)}
-              disabled={loading}
-            >
-              <RefreshCw size={14} aria-hidden="true" />
-              Refresh
-            </button>
-            <button
-              className="calc-outline-btn"
-              type="button"
-              onClick={() => setShowSupervisorModal(true)}
-              disabled={!record}
-            >
-              <Send size={14} aria-hidden="true" />
-              Refer to Supervisor
-            </button>
-            <button
-              className="calc-outline-btn"
-              type="button"
-              onClick={() => void handleApproveClick()}
-              disabled={!record || approving}
-            >
-              <CircleCheck size={14} aria-hidden="true" />
-              {approving ? 'Approving...' : 'Approve'}
-            </button>
-            {/* <button
-              className="calc-outline-btn"
-              type="button"
-              onClick={() => void handleFarmsApiTestClick()}
-              disabled={farmsApiTestLoading}
-            >
-              <ExternalLink size={14} aria-hidden="true" />
-              {farmsApiTestLoading ? 'Calling FARMS...' : 'Test FARMS Line Items'}
-            </button> */}
-            {/* <button
-              className="calc-outline-btn"
-              type="button"
-              onClick={() => void handleFarmsWorkflowTestClick()}
-              disabled={farmsApiTestLoading}
-            >
-              <ExternalLink size={14} aria-hidden="true" />
-              Test FARMS Workflow
-            </button> */}
-            {farmsApiTestMessage && <span className="calc-inline-status">{farmsApiTestMessage}</span>}
+          <div className="calc-actions-row">
+            <div className="calc-primary-actions">
+              <button className="calc-outline-btn" type="button" onClick={() => setShow45DayModal(true)}>Send 45-Day Letter</button>
+              <button
+                className="calc-outline-btn"
+                type="button"
+                onClick={() => setRefreshKey(prev => prev + 1)}
+                disabled={loading}
+              >
+                <RefreshCw size={14} aria-hidden="true" />
+                Refresh
+              </button>
+              <button
+                className="calc-outline-btn"
+                type="button"
+                onClick={() => setShowSupervisorModal(true)}
+                disabled={!record}
+              >
+                <Send size={14} aria-hidden="true" />
+                Refer to Supervisor
+              </button>
+              <button
+                className="calc-outline-btn"
+                type="button"
+                onClick={() => void handleApproveClick()}
+                disabled={!record || approving}
+              >
+                <CircleCheck size={14} aria-hidden="true" />
+                {approving ? 'Approving...' : 'Approve'}
+              </button>
+              {farmsApiTestMessage && <span className="calc-inline-status">{farmsApiTestMessage}</span>}
+            </div>
+
+            {record && record.vsi_enrolmentstatus === 865520010 && (() => {
+              const startDate = record.vsi_fortyfivedayletterstartdate;
+              const paused = !!record.vsi_fortyfivedaycounterpaused;
+              const pauseDate = record.vsi_fortyfivedaypausedate;
+              const referenceMs = paused && pauseDate ? new Date(pauseDate).getTime() : Date.now();
+              const elapsedDays = startDate
+                ? Math.floor((referenceMs - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+                : null;
+              const remainingDays = elapsedDays !== null ? 45 - elapsedDays : null;
+              return (
+                <div className="calc-fortyfiveday-card" aria-label="45-day letter counter">
+                  <div className="calc-fortyfiveday-title">45-Day Counter</div>
+                  <div className="calc-fortyfiveday-grid">
+                    <div>
+                      <div className="calc-fortyfiveday-label">Start Date</div>
+                      <div className="calc-fortyfiveday-value">{startDate ? new Date(startDate).toLocaleDateString() : '-'}</div>
+                    </div>
+                    <div>
+                      <div className="calc-fortyfiveday-label">Elapsed</div>
+                      <div className="calc-fortyfiveday-value">{elapsedDays !== null ? `${elapsedDays} / 45 days` : '-'}</div>
+                    </div>
+                    <div>
+                      <div className="calc-fortyfiveday-label">Remaining</div>
+                      <div className={`calc-fortyfiveday-value${remainingDays !== null && remainingDays <= 10 && !paused ? ' calc-fortyfiveday-warning' : ''}`}>
+                        {remainingDays !== null ? `${remainingDays} days` : '-'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="calc-fortyfiveday-label">Status</div>
+                      <div className="calc-fortyfiveday-value">
+                        {paused
+                          ? <span className="fortyfiveday-badge fortyfiveday-badge-paused">⏸ Paused{pauseDate ? ` since ${new Date(pauseDate).toLocaleDateString()}` : ''}</span>
+                          : <span className="fortyfiveday-badge fortyfiveday-badge-running">▶ Running</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="calc-fortyfiveday-actions">
+                    {paused ? (
+                      <button
+                        className="calc-outline-btn"
+                        type="button"
+                        onClick={() => void handle45DayResume()}
+                        disabled={counterActionLoading}
+                      >
+                        {counterActionLoading ? 'Resuming...' : 'Resume Counter'}
+                      </button>
+                    ) : (
+                      <button
+                        className="calc-outline-btn"
+                        type="button"
+                        onClick={() => void handle45DayPause()}
+                        disabled={counterActionLoading}
+                      >
+                        {counterActionLoading ? 'Pausing...' : 'Pause Counter'}
+                      </button>
+                    )}
+                  </div>
+                  {counterActionError && <p className="calc-fortyfiveday-error">{counterActionError}</p>}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
