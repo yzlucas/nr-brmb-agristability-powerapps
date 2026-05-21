@@ -3,6 +3,7 @@ import { CircleCheck, ExternalLink, RefreshCw, Send } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import { Link, useParams } from 'react-router-dom';
 import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
+import { Send45DayLetterModal } from '../components/Send45DayLetterModal';
 import { ConfirmActionModal } from '../components/ConfirmActionModal';
 import { ReferToSupervisorModal } from '../components/ReferToSupervisorModal';
 import { patchEnrolmentCache } from '../hooks/useEnrolmentData';
@@ -168,6 +169,8 @@ export function EnrolmentCalculationPage() {
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [show45DayModal, setShow45DayModal] = useState(false);
+  const [letterSentMessage, setLetterSentMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -430,7 +433,7 @@ export function EnrolmentCalculationPage() {
           </div>
           <h1 className="calc-participant-name">{participantName || (loading ? 'Loading...' : '-')}</h1>
           <div className="calc-primary-actions">
-            <button className="calc-outline-btn" type="button">Send 45-Day Letter</button>
+            <button className="calc-outline-btn" type="button" onClick={() => setShow45DayModal(true)}>Send 45-Day Letter</button>
             <button
               className="calc-outline-btn"
               type="button"
@@ -598,6 +601,18 @@ export function EnrolmentCalculationPage() {
       )}
       {approvalErrorModal && (
         <ApprovalErrorModal message={approvalErrorModal} onClose={() => setApprovalErrorModal(null)} />
+      )}
+      {letterSentMessage && (
+        <p className="calc-state" style={{ color: '#16a34a' }}>{letterSentMessage}</p>
+      )}
+      {show45DayModal && (
+        <Send45DayLetterModal
+          enrolmentId={enrolmentId ?? ''}
+          enrolmentName={record?.vsi_name ?? ''}
+          programYear={String(getProgramYear(record) ?? '')}
+          onClose={() => setShow45DayModal(false)}
+          onSuccess={() => setLetterSentMessage('45-day letter sent successfully.')}
+        />
       )}
       {showApproveConfirm && record && (
         <ConfirmActionModal
