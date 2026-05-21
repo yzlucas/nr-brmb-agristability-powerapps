@@ -3551,6 +3551,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "vsi_programyears": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "vsi_programyearid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "queueitems": {
     "tableId": "",
     "version": "",
@@ -5445,14 +5452,14 @@ export const dataSourcesInfo = {
       }
     }
   },
-  "http_20workflows_5fe39d1efd21a19d13_5f571039b465579741": {
+  "generate45dayletter": {
     "tableId": "",
     "version": "",
     "primaryKey": "",
     "dataSourceType": "Connector",
     "apis": {
-      "BulkENFlow": {
-        "path": "/{connectionId}/powerautomate/automations/direct/workflows/bb9c187d03b84824a69748a31955d94e/triggers/manual/paths/invoke",
+      "Run": {
+        "path": "/{connectionId}/triggers/manual/run",
         "method": "POST",
         "parameters": [
           {
@@ -5462,7 +5469,7 @@ export const dataSourcesInfo = {
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "input",
             "in": "body",
             "required": true,
             "type": "object"
@@ -5470,11 +5477,54 @@ export const dataSourcesInfo = {
           {
             "name": "api-version",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string"
           }
         ],
         "responseInfo": {
+          "200": {
+            "type": "object"
+          },
+          "default": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "generatebulkenrolmentnotices": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "",
+    "dataSourceType": "Connector",
+    "apis": {
+      "Run": {
+        "path": "/{connectionId}/triggers/manual/run",
+        "method": "POST",
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "input",
+            "in": "body",
+            "required": true,
+            "type": "object"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responseInfo": {
+          "200": {
+            "type": "object"
+          },
           "default": {
             "type": "object"
           }

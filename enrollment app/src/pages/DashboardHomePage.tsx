@@ -376,12 +376,6 @@ export function DashboardHomePage() {
                 Pending supervisor&rsquo;s approval: <strong>{rows.filter(r => r.vsi_taskstatus === 865520001).length}</strong>
               </Link>
             </div>
-            <div className="worklist-item">
-              <Info size={15} className="worklist-icon" />
-              <button className="worklist-link" onClick={() => applyWorklistFilter('enrolStatus', '_45DayLetter')}>
-                45 day letters: <strong>{rows.filter(r => r.vsi_enrolmentstatus === 865520010).length}</strong>
-              </button>
-            </div>
           </div>
 
           <div className="sa-card">

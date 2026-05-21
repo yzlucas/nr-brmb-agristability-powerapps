@@ -88,9 +88,7 @@ export function renderCell(
       return (
         <td key={key} className="cell-fee">
           <div className="calculated-fee-cell">
-            {row.vsi_participantprogramyearid
-              ? <Link className="calculated-fee-value" to={`/calculation/dashboard/${row.vsi_participantprogramyearid}`}>{formatCurrency(calcFee)}</Link>
-              : <span className="calculated-fee-value">{formatCurrency(calcFee)}</span>}
+            <span className="calculated-fee-value">{formatCurrency(calcFee)}</span>
             {variance != null ? <span className={`variance-pill ${varianceClass}`}>{varianceText}</span> : null}
           </div>
         </td>
