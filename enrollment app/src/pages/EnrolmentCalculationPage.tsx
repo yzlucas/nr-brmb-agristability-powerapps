@@ -12,6 +12,7 @@ import { MicrosoftDataverseService } from '../generated/services/MicrosoftDatave
 import { QueueitemsService } from '../generated/services/QueueitemsService';
 import { Vsi_armsconfigurationsService } from '../generated/services/Vsi_armsconfigurationsService';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
+import { farmsApi } from '../services/farmsApi';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
 import { calculateVariance, formatCurrencyOr, formatVariancePercent, getTaskStatusLabel } from '../utils/helpers';
 
@@ -152,10 +153,13 @@ export function EnrolmentCalculationPage() {
   const backTo = source === 'supervisor' ? '/supervisor-approval' : '/dashboard-home';
   const backLabel = source === 'supervisor' ? 'Back to Supervisor Approval' : 'Back to Dashboard';
   const [record, setRecord] = useState<Vsi_participantprogramyears | null>(null);
+  const [loadedEnrolmentId, setLoadedEnrolmentId] = useState('');
   const [participantPin, setParticipantPin] = useState('');
   const [participantPinLoading, setParticipantPinLoading] = useState(false);
   const [farmsLegacyBaseUrl, setFarmsLegacyBaseUrl] = useState('');
   const [farmsLegacyBaseUrlLoading, setFarmsLegacyBaseUrlLoading] = useState(false);
+  const [farmsCalculationLoading, setFarmsCalculationLoading] = useState(false);
+  const [farmsCalculationError, setFarmsCalculationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -177,6 +181,7 @@ export function EnrolmentCalculationPage() {
       try {
         setLoading(true);
         setError(null);
+        setLoadedEnrolmentId('');
         let result = await Vsi_participantprogramyearsService.get(enrolmentId, {
           select: [
             'vsi_name',
@@ -219,6 +224,7 @@ export function EnrolmentCalculationPage() {
         }
 
         setRecord(result.data);
+        setLoadedEnrolmentId(enrolmentId);
         try {
         } catch {
         }
@@ -282,6 +288,35 @@ export function EnrolmentCalculationPage() {
     });
     return `${farmsLegacyBaseUrl}/farm800.do?${params.toString()}`;
   }, [farmsLegacyBaseUrl, participantPin, programYear]);
+  useEffect(() => {
+    if (!enrolmentId || loadedEnrolmentId !== enrolmentId || !participantPin || !programYear) {
+      return;
+    }
+
+    let cancelled = false;
+    const calculationProgramYear = programYear - 2;
+    setFarmsCalculationLoading(true);
+    setFarmsCalculationError(null);
+
+    farmsApi.getEnrolmentNoticeWorkflowCalculation(participantPin, calculationProgramYear)
+      .then((result) => {
+        if (cancelled || result.success) return;
+        setFarmsCalculationError(result.error?.message ?? 'Unable to update FARMS enrolment calculation.');
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setFarmsCalculationError(err instanceof Error ? err.message : 'Unable to update FARMS enrolment calculation.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFarmsCalculationLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enrolmentId, loadedEnrolmentId, participantPin, programYear]);
+
   const participantName = useMemo(() => {
     if (!record) return '';
     const raw = record as unknown as Record<string, unknown>;
@@ -473,6 +508,8 @@ export function EnrolmentCalculationPage() {
       </div>
 
       {loading && <p className="calc-state">Loading summary...</p>}
+      {farmsCalculationLoading && <p className="calc-state">Updating FARMS calculation...</p>}
+      {farmsCalculationError && <p className="calc-state calc-state-error">FARMS calculation update failed: {farmsCalculationError}</p>}
       {error && <p className="calc-state calc-state-error">Error loading summary: {error}</p>}
 
       {!loading && !error && record && (
