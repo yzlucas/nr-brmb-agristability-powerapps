@@ -164,7 +164,6 @@ export function EnrolmentCalculationPage() {
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [farmsApiTestMessage,] = useState('');
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -424,25 +423,6 @@ export function EnrolmentCalculationPage() {
               <CircleCheck size={14} aria-hidden="true" />
               {approving ? 'Approving...' : 'Approve'}
             </button>
-            {/* <button
-              className="calc-outline-btn"
-              type="button"
-              onClick={() => void handleFarmsApiTestClick()}
-              disabled={farmsApiTestLoading}
-            >
-              <ExternalLink size={14} aria-hidden="true" />
-              {farmsApiTestLoading ? 'Calling FARMS...' : 'Test FARMS Line Items'}
-            </button> */}
-            {/* <button
-              className="calc-outline-btn"
-              type="button"
-              onClick={() => void handleFarmsWorkflowTestClick()}
-              disabled={farmsApiTestLoading}
-            >
-              <ExternalLink size={14} aria-hidden="true" />
-              Test FARMS Workflow
-            </button> */}
-            {farmsApiTestMessage && <span className="calc-inline-status">{farmsApiTestMessage}</span>}
           </div>
         </div>
 
