@@ -3080,6 +3080,30 @@
           "x-ms-schema-name": "vsi_municipalityName",
           "x-ms-read-only": true
         },
+        "vsi_npptaskcount": {
+          "type": "string",
+          "title": "NPP Task Count",
+          "x-ms-dataverse-attribute": "vsi_npptaskcount",
+          "x-ms-dataverse-type": "IntegerType",
+          "x-ms-schema-name": "vsi_NPPTaskCount",
+          "x-ms-read-only": true
+        },
+        "vsi_npptaskcount_date": {
+          "type": "string",
+          "title": "NPP Task Count (Last Updated On)",
+          "x-ms-dataverse-attribute": "vsi_npptaskcount_date",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "vsi_NPPTaskCount_Date",
+          "x-ms-read-only": true
+        },
+        "vsi_npptaskcount_state": {
+          "type": "string",
+          "title": "NPP Task Count (State)",
+          "x-ms-dataverse-attribute": "vsi_npptaskcount_state",
+          "x-ms-dataverse-type": "IntegerType",
+          "x-ms-schema-name": "vsi_NPPTaskCount_State",
+          "x-ms-read-only": true
+        },
         "vsi_pin": {
           "type": "string",
           "title": "PIN",

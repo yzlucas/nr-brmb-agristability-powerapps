@@ -117,7 +117,7 @@ export function useViews(state: ViewState, setters: {
 
       const [uqResult, sqResult] = await Promise.allSettled([
         UserqueriesService.getAll({
-          select: ['userqueryid', 'name', 'layoutjson', 'layoutxml', 'returnedtypecode', 'querytype'],
+          select: ['userqueryid', 'name', 'fetchxml', 'layoutjson', 'layoutxml', 'returnedtypecode', 'querytype'],
           filter: `returnedtypecode eq '${USERQUERY_ENTITY}'`,
         }),
         SavedqueriesService.getAll({
@@ -227,8 +227,11 @@ export function useViews(state: ViewState, setters: {
       const allViews = await loadViews(false);
       const newId = created?.userqueryid;
       if (newId) {
-        const newView = allViews.find(v => v.id === newId) ?? { id: newId, name, source: 'personal' as const, ...snap };
-        setSavedViews(prev => prev.some(v => v.id === newId) ? prev : [...prev, newView]);
+        // Always use local snap state for filter/column data — Dataverse may not
+        // return layoutjson immediately after create, causing filters to appear missing.
+        const reloaded = allViews.find(v => v.id === newId);
+        const newView: PersonalView = { ...(reloaded ?? {}), ...snap, id: newId, name, source: 'personal' };
+        setSavedViews(prev => prev.some(v => v.id === newId) ? prev.map(v => v.id === newId ? newView : v) : [...prev, newView]);
         setActiveViewId(newId);
         saveActiveViewId(newId);
         applyView(newView);
@@ -236,9 +239,11 @@ export function useViews(state: ViewState, setters: {
         // newId not in result — look for the newly named view in the reloaded list
         const match = allViews.find(v => v.name === name && v.source === 'personal');
         if (match) {
-          setActiveViewId(match.id);
-          saveActiveViewId(match.id);
-          applyView(match);
+          const matchView: PersonalView = { ...match, ...snap, id: match.id, name: match.name, source: 'personal' };
+          setSavedViews(prev => prev.map(v => v.id === match.id ? matchView : v));
+          setActiveViewId(matchView.id);
+          saveActiveViewId(matchView.id);
+          applyView(matchView);
         } else {
           console.warn('[Views] New view not found after reload — name:', name, 'all personal:', allViews.filter(v => v.source === 'personal').map(v => v.name));
         }

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { AdvFilterNode, AdvFilterRow, AdvFilterGroup, AdvFilterField, AdvFilterOp, LogicOp } from '../types/enrollment';
 import { ADV_FIELD_LABELS, ADV_FIELD_OPTIONS, ADV_OP_LABELS } from '../constants/columns';
 import { getChoiceOptions, formatEnrolmentStatusDisplay } from '../utils/helpers';
@@ -19,13 +20,23 @@ function NodeContextMenu({
   onUngroup?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setMenuStyle({ position: 'fixed', top: r.bottom + 2, left: r.right - 150, minWidth: 150 });
+    }
+  }, [open]);
+
   return (
     <div className="ef-ctx-wrapper">
-      <button className="ef-ctx-btn" onClick={() => setOpen(o => !o)} title="More options">⋯</button>
-      {open && (
+      <button ref={btnRef} className="ef-ctx-btn" onClick={() => setOpen(o => !o)} title="More options">⋯</button>
+      {open && createPortal(
         <>
           <div className="ef-add-backdrop" onClick={() => setOpen(false)} />
-          <div className="ef-ctx-menu">
+          <div className="ef-ctx-menu" style={menuStyle}>
             <button className="ef-ctx-item" onClick={() => { onDelete(); setOpen(false); }}>
               <span className="ef-ctx-icon">🗑</span> Delete
             </button>
@@ -40,7 +51,8 @@ function NodeContextMenu({
               </button>
             )}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
@@ -48,13 +60,23 @@ function NodeContextMenu({
 
 function AddMenu({ onAddRow, onAddGroup }: { onAddRow: () => void; onAddGroup: () => void }) {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setMenuStyle({ position: 'fixed', top: r.bottom + 2, left: r.left, minWidth: 170 });
+    }
+  }, [open]);
+
   return (
     <div className="ef-add-wrapper">
-      <button className="ef-add-btn" onClick={() => setOpen(o => !o)}>+ Add ▾</button>
-      {open && (
+      <button ref={btnRef} className="ef-add-btn" onClick={() => setOpen(o => !o)}>+ Add ▾</button>
+      {open && createPortal(
         <>
           <div className="ef-add-backdrop" onClick={() => setOpen(false)} />
-          <div className="ef-add-menu">
+          <div className="ef-add-menu" style={menuStyle}>
             <button className="ef-add-menu-item" onClick={() => { onAddRow(); setOpen(false); }}>
               <span className="ef-add-icon">⊕</span> Add row
             </button>
@@ -62,7 +84,8 @@ function AddMenu({ onAddRow, onAddGroup }: { onAddRow: () => void; onAddGroup: (
               <span className="ef-add-icon">≡</span> Add group
             </button>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
@@ -83,6 +106,15 @@ function FilterRowEditor({
   const choiceOpts = fieldType === 'choice' ? getChoiceOptions(row.field) : [];
   const formatChoiceLabel = (opt: string) => row.field === 'enrolStatus' ? formatEnrolmentStatusDisplay(opt) : opt;
   const [valDropdownOpen, setValDropdownOpen] = useState(false);
+  const valBtnRef = useRef<HTMLButtonElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    if (valDropdownOpen && valBtnRef.current) {
+      const r = valBtnRef.current.getBoundingClientRect();
+      setDropdownStyle({ position: 'fixed', top: r.bottom + 2, left: r.left, minWidth: r.width });
+    }
+  }, [valDropdownOpen]);
 
   const toggleValue = (val: string) => {
     const next = new Set(row.values);
@@ -121,14 +153,14 @@ function FilterRowEditor({
       </select>
       {fieldType === 'choice' ? (
         <div className="ef-cell ef-cell-val ef-val-choice-wrapper">
-          <button className="ef-val-choice-btn" onClick={() => setValDropdownOpen(o => !o)}>
+          <button ref={valBtnRef} className="ef-val-choice-btn" onClick={() => setValDropdownOpen(o => !o)}>
             {row.values.size === 0 ? <span className="ef-val-placeholder">Value</span> : [...row.values].map(formatChoiceLabel).join(', ')}
             <span className="ef-val-chevron">▾</span>
           </button>
-          {valDropdownOpen && (
+          {valDropdownOpen && createPortal(
             <>
               <div className="ef-add-backdrop" onClick={() => setValDropdownOpen(false)} />
-              <div className="ef-val-dropdown">
+              <div className="ef-val-dropdown" style={dropdownStyle}>
                 {choiceOpts.map(opt => (
                   <label key={opt} className="ef-val-opt">
                     <input type="checkbox" checked={row.values.has(opt)} onChange={() => toggleValue(opt)} />
@@ -136,7 +168,8 @@ function FilterRowEditor({
                   </label>
                 ))}
               </div>
-            </>
+            </>,
+            document.body
           )}
         </div>
       ) : (

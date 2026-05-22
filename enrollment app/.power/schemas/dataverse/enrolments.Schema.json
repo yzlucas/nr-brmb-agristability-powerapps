@@ -1209,6 +1209,38 @@
           "x-ms-schema-name": "vsi_incombinedfarmName",
           "x-ms-read-only": true
         },
+        "vsi_isnewparticipant": {
+          "type": "string",
+          "title": "Is New Participant",
+          "x-ms-dataverse-attribute": "vsi_isnewparticipant",
+          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-schema-name": "vsi_IsNewParticipant",
+          "x-ms-read-only": true,
+          "enum": [
+            "No",
+            "Yes"
+          ],
+          "x-ms-enum-values": [
+            0,
+            1
+          ],
+          "Color": [
+            null,
+            null
+          ],
+          "x-ms-optionsetmetadataid": "05cb7387-5c55-f111-bec7-7c1e5254c1d5",
+          "x-ms-isGlobal": false,
+          "x-ms-optionsetdisplayname": "Is New Participant",
+          "x-ms-optionSetType": "Boolean"
+        },
+        "vsi_isnewparticipantname": {
+          "type": "string",
+          "title": "vsi_isnewparticipantname",
+          "x-ms-dataverse-attribute": "vsi_isnewparticipantname",
+          "x-ms-dataverse-type": "VirtualType",
+          "x-ms-schema-name": "vsi_isnewparticipantName",
+          "x-ms-read-only": true
+        },
         "vsi_lateenrolmentfeesfinaldeadlinedate": {
           "type": "string",
           "title": "Late Enrolment Fees Final Deadline Date",

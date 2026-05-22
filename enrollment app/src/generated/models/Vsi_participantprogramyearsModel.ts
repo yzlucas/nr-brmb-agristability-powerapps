@@ -210,6 +210,8 @@ export interface Vsi_participantprogramyears extends Vsi_participantprogramyears
   vsi_generatedfromenwscenarioname?: string;
   vsi_haspartnersname?: string;
   vsi_incombinedfarmname?: string;
+  vsi_isnewparticipant?: boolean;
+  vsi_isnewparticipantname?: string;
   vsi_lateinformationfeeassessedname?: string;
   vsi_latepaymentfee_base?: number;
   vsi_latepaymentfeeassessedname?: string;
