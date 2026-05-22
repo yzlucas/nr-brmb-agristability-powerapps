@@ -62,6 +62,7 @@ const DETAIL_SELECT = [
   'vsi_fortyfivedayletterstartdate',
   'vsi_fortyfivedaycounterpaused',
   'vsi_fortyfivedaypausedate',
+  'vsi_isnewparticipant',
 ] as const;
 
 const formatCad = (value: number | undefined): string => {
@@ -334,6 +335,18 @@ export function EnrolmentDetailsPage() {
                   checked={formState.vsi_fullyprovinciallyfunded}
                   onChange={onLateParticipantChange}
                   disabled={saving}
+                />
+              </label>
+            </div>
+            <div className="details-field">
+              <span className="details-label">NPP</span>
+              <label className="details-checkbox-control">
+                <input
+                  type="checkbox"
+                  checked={Boolean(record.vsi_isnewparticipant)}
+                  readOnly
+                  tabIndex={-1}
+                  style={{ pointerEvents: 'none' }}
                 />
               </label>
             </div>
