@@ -6,6 +6,7 @@ import type { SortKey, SortDir, FilterOperator, AdvFilterNode, LogicOp, QuickFil
 import { DEFAULT_VISIBLE_KEYS } from '../constants/columns';
 import { countActiveNodes } from '../utils/filterTree';
 import { useEnrolmentData, useSortedAndFilteredRows } from '../hooks/useEnrolmentData';
+import { useRole } from '../context/RoleContext';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
 import { clearSaCache } from './SupervisorApprovalPage';
 import { useViews } from '../hooks/useViews';
@@ -28,6 +29,7 @@ import { EnrolmentActionsBar } from '../components/EnrolmentActionsBar';
 const PAGE_SIZE = 300;
 
 export function DashboardHomePage() {
+  const { activeRole } = useRole();
   const { rows, setRows, loading, error, avatarUrls, fetchEnrolments, coreAppId, coreBaseUrl, fetchCoreAppId } = useEnrolmentData();
 
   // Refresh handler is defined after useViews so reloadViews is available
@@ -128,21 +130,29 @@ export function DashboardHomePage() {
     setSelectedIds(new Set());
   }, []);
 
-  /** Clear every filter, then optionally apply a single task-status or enrol-status filter. */
-  const applyWorklistFilter = useCallback((
-    type: 'taskStatus' | 'enrolStatus',
-    label: string,
-  ) => {
-    const is45Day = label === '_45DayLetter';
-    setFilters({ verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: is45Day, varianceAlert: false });
-    setSearchQuery('');
-    setTaskStatusFilter(type === 'taskStatus' ? new Set([label]) : new Set());
-    setEnrolStatusFilter(type === 'enrolStatus' ? new Set([label]) : new Set());
-    setYearFilter(new Set());
-    setOwnerFilter(new Set());
-    setAdvFilterNodes([]);
-    setCurrentPage(1);
-  }, []);
+  // Build the combined node list shown in Edit Filters:
+  // quick filters (except flagged) + column header filters + existing adv nodes.
+  // Synthetic nodes use negative IDs to avoid collisions with nextFilterId().
+  const effectiveFilterNodes = useMemo((): AdvFilterNode[] => {
+    let sid = -1;
+    const extra: AdvFilterNode[] = [];
+    if (filters.verifiedCalc)
+      extra.push({ kind: 'row', id: sid--, field: 'enrolStatus', operator: 'equals', values: new Set(['VerifiedENCalculalted']), textValue: '' });
+    if (filters.unverifiedCalc)
+      extra.push({ kind: 'row', id: sid--, field: 'enrolStatus', operator: 'equals', values: new Set(['UnverifiedENCalculated']), textValue: '' });
+    if (filters.fortyFiveDayLetter)
+      extra.push({ kind: 'row', id: sid--, field: 'enrolStatus', operator: 'equals', values: new Set(['_45DayLetter']), textValue: '' });
+    if (filters.partnerships)
+      extra.push({ kind: 'group', id: sid--, logic: 'OR', children: [
+        { kind: 'row', id: sid--, field: 'hasPartners', operator: 'equals', values: new Set(['Yes']), textValue: '' },
+        { kind: 'row', id: sid--, field: 'inCombinedFarm', operator: 'equals', values: new Set(['Yes']), textValue: '' },
+      ]});
+    if (taskStatusFilter.size > 0)
+      extra.push({ kind: 'row', id: sid--, field: 'taskStatus', operator: taskFilterOp, values: new Set(taskStatusFilter), textValue: '' });
+    if (enrolStatusFilter.size > 0)
+      extra.push({ kind: 'row', id: sid--, field: 'enrolStatus', operator: enrolFilterOp, values: new Set(enrolStatusFilter), textValue: '' });
+    return [...extra, ...advFilterNodes];
+  }, [filters, taskStatusFilter, enrolStatusFilter, taskFilterOp, enrolFilterOp, advFilterNodes]);
 
   // Column drag-and-drop
   const [colDragIdx, setColDragIdx] = useState<number | null>(null);
@@ -228,6 +238,30 @@ export function DashboardHomePage() {
     handleDeleteView(id);
   }, [closePanels, handleDeleteView]);
 
+  // Stable id of the NPP system view — used to detect when NPP mode is active.
+  const nppViewId = useMemo(
+    () => savedViews.find(v => v.source === 'system' && /npp/i.test(v.name))?.id ?? null,
+    [savedViews]
+  );
+
+  /** Clear every filter, then optionally apply a single task-status or enrol-status filter.
+   * If the NPP view is currently active, reset to the default view first. */
+  const applyWorklistFilter = useCallback((
+    type: 'taskStatus' | 'enrolStatus',
+    label: string,
+  ) => {
+    if (nppViewId && activeViewId === nppViewId) handleResetDefault();
+    const is45Day = label === '_45DayLetter';
+    setFilters({ verifiedCalc: false, unverifiedCalc: false, flagged: false, partnerships: false, fortyFiveDayLetter: is45Day, varianceAlert: false });
+    setSearchQuery('');
+    setTaskStatusFilter(type === 'taskStatus' ? new Set([label]) : new Set());
+    setEnrolStatusFilter(type === 'enrolStatus' ? new Set([label]) : new Set());
+    setYearFilter(new Set());
+    setOwnerFilter(new Set());
+    setAdvFilterNodes([]);
+    setCurrentPage(1);
+  }, [nppViewId, activeViewId, handleResetDefault]);
+
   // Sorting & filtering
   const { filteredRows, taskStatusOptions, enrolStatusOptions, yearOptions, ownerOptions } = useSortedAndFilteredRows(
     rows, sortKey, sortDir, filters,
@@ -304,6 +338,10 @@ export function DashboardHomePage() {
         return;
       }
     }
+    // If the NPP view is active and a quick filter is toggled, reset to default view first.
+    if (nppViewId && activeViewId === nppViewId) {
+      handleResetDefault();
+    }
     setFilters(current => ({ ...current, [key]: !current[key] }));
     setCurrentPage(1);
   };
@@ -366,15 +404,27 @@ export function DashboardHomePage() {
           <div className="worklist-box">
             <div className="worklist-item">
               <Info size={15} className="worklist-icon" />
-              <button className="worklist-link" onClick={() => applyWorklistFilter('enrolStatus', 'Initialized')}>
-                New Participants: <strong>{rows.filter(r => r.vsi_enrolmentstatus === 865520004).length}</strong>
+              <button className="worklist-link" onClick={() => {
+                const nppView = savedViews.find(v => v.source === 'system' && /npp/i.test(v.name));
+                if (nppView) {
+                  handleSelectView(nppView.id);
+                  setCurrentPage(1);
+                }
+              }}>
+                New Participants: <strong>{rows.filter(r => r.vsi_isnewparticipant === true).length}</strong>
               </button>
             </div>
             <div className="worklist-item">
               <Info size={15} className="worklist-icon" />
-              <Link to="/supervisor-approval" className="worklist-link">
-                Pending supervisor&rsquo;s approval: <strong>{rows.filter(r => r.vsi_taskstatus === 865520001).length}</strong>
-              </Link>
+              {activeRole === 'Verifier' ? (
+                <button className="worklist-link" onClick={() => applyWorklistFilter('taskStatus', 'Supervisor')}>
+                  Pending supervisor&rsquo;s approval: <strong>{rows.filter(r => r.vsi_taskstatus === 865520001).length}</strong>
+                </button>
+              ) : (
+                <Link to="/supervisor-approval" className="worklist-link">
+                  Pending supervisor&rsquo;s approval: <strong>{rows.filter(r => r.vsi_taskstatus === 865520001).length}</strong>
+                </Link>
+              )}
             </div>
           </div>
 
@@ -531,11 +581,15 @@ export function DashboardHomePage() {
       {showEditFilters && (
         <EditFiltersPanel
           key={activeViewId ?? 'default'}
-          filterNodes={advFilterNodes}
+          filterNodes={effectiveFilterNodes}
           logicOp={advLogicOp}
           onApply={(nodes, logic) => {
             setAdvFilterNodesAndReset(nodes);
             setAdvLogicOpAndReset(logic);
+            // Consolidate: clear any quick filters + column filters that were merged in
+            setFilters(f => ({ ...f, verifiedCalc: false, unverifiedCalc: false, fortyFiveDayLetter: false, partnerships: false }));
+            setTaskStatusFilter(new Set());
+            setEnrolStatusFilter(new Set());
             setShowEditFilters(false);
           }}
           onCancel={() => setShowEditFilters(false)}

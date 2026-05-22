@@ -142,6 +142,7 @@ export function renderCell(
     case 'hasPartners': return <td key={key}>{yesNo(row.vsi_haspartners)}</td>;
     case 'inCombinedFarm': return <td key={key}>{yesNo(row.vsi_incombinedfarm)}</td>;
     case 'manualReview': return <td key={key}>{yesNo(row.vsi_manualreview)}</td>;
+    case 'isNewParticipant': return <td key={key}>{yesNo(row.vsi_isnewparticipant)}</td>;
     case 'enrolNoticeDate': return <td key={key}>{fmtDate(row.vsi_enrolmentnoticesentdate)}</td>;
     case 'fileReceivedDate': return <td key={key}>{fmtDate(row.vsi_filereceiveddate)}</td>;
     case 'feesPaidDate': return <td key={key}>{fmtDate(row.vsi_enrolmentfeespaiddate)}</td>;

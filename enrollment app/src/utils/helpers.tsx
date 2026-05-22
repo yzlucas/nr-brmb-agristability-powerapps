@@ -107,7 +107,7 @@ export function getAvatarColor(name: string): string {
 export function getChoiceOptions(field: string): string[] {
   if (field === 'taskStatus') return Object.values(Vsi_participantprogramyearsvsi_taskstatus) as string[];
   if (field === 'enrolStatus') return Object.values(Vsi_participantprogramyearsvsi_enrolmentstatus) as string[];
-  if (field === 'hasPartners' || field === 'inCombinedFarm') return ['Yes', 'No'];
+  if (field === 'hasPartners' || field === 'inCombinedFarm' || field === 'isNewParticipant') return ['Yes', 'No'];
   return [];
 }
 
@@ -142,6 +142,7 @@ export function getSortValue(row: Vsi_participantprogramyears, key: SortKey): st
     }
     case 'regionalOffice': return Vsi_participantprogramyearsvsi_enrollmentregionaloffice[row.vsi_enrollmentregionaloffice as keyof typeof Vsi_participantprogramyearsvsi_enrollmentregionaloffice] ?? '';
     case 'farmingSector': return Vsi_participantprogramyearsvsi_farmingsector[row.vsi_farmingsector as keyof typeof Vsi_participantprogramyearsvsi_farmingsector] ?? '';
+    case 'isNewParticipant': return row.vsi_isnewparticipant === true ? 1 : 0;
     default: return '';
   }
 }

@@ -245,6 +245,8 @@ export function SupervisorApprovalPage() {
             '_vsi_participantid_value',
             'vsi_enrolmentstatus',
             'vsi_fortyfivedayletterstartdate',
+            'vsi_fortyfivedaycounterpaused',
+            'vsi_fortyfivedaypausedate',
             'vsi_calculatedenfee',
             'vsi_previousyearcalculatedenfee',
             'vsi_administrativecostsharingfee',
@@ -1254,13 +1256,18 @@ export function SupervisorApprovalPage() {
                           const statusLabel = getEnrolmentStatusLabel(item.vsi_enrolmentstatus);
                           const is45Day = statusLabel === '_45DayLetter';
                           const startDate = is45Day ? item.vsi_fortyfivedayletterstartdate : undefined;
-                          const days = startDate ? Math.floor(((Date.now() - 7 * 60 * 60 * 1000) - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) : null;
+                          const paused = is45Day ? !!item.vsi_fortyfivedaycounterpaused : false;
+                          const pauseDate = is45Day ? item.vsi_fortyfivedaypausedate : undefined;
+                          const referenceDate = paused && pauseDate ? new Date(pauseDate).getTime() : Date.now() - 7 * 60 * 60 * 1000;
+                          const days = startDate ? Math.floor((referenceDate - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) : null;
                           return (
                             <td key={key}>
                               <div className="enrol-status-cell">
                                 <span className="enrol-badge">{formatEnrolmentStatusDisplay(statusLabel) || '—'}</span>
                                 {days !== null && (
-                                  <span className={`days-badge ${days >= 35 ? 'badge-red' : ''}`}>{days}d</span>
+                                  <span className={`days-badge ${days >= 35 && !paused ? 'badge-red' : ''} ${paused ? 'badge-paused' : ''}`}>
+                                    {paused ? '⏸ ' : ''}{days}d
+                                  </span>
                                 )}
                               </div>
                             </td>

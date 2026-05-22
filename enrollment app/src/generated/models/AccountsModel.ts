@@ -497,6 +497,9 @@ export interface Accounts extends AccountsBase {
   vsi_isagencyname?: string;
   vsi_isindemnityparticipantname?: string;
   vsi_municipalityname?: string;
+  vsi_npptaskcount?: number;
+  vsi_npptaskcount_date?: string;
+  vsi_npptaskcount_state?: number;
   vsi_quitagristabilityprogramname?: string;
   vsi_regionalofficename?: string;
   vsi_regionname?: string;

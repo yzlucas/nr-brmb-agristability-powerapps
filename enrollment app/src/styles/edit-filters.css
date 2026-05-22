@@ -275,11 +275,9 @@
   flex-shrink: 0;
 }
 .ef-val-dropdown {
-  position: absolute;
-  bottom: calc(100% + 2px);
-  left: 0;
-  right: 0;
-  z-index: 110;
+  width: max-content;
+  max-width: 320px;
+  z-index: 1100;
   background: #fff;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -325,10 +323,7 @@
   color: #1a1a1a;
 }
 .ef-ctx-menu {
-  position: absolute;
-  bottom: calc(100% + 2px);
-  right: 0;
-  z-index: 110;
+  z-index: 1100;
   min-width: 150px;
   background: #fff;
   border: 1px solid #d1d5db;
@@ -386,10 +381,7 @@
   z-index: 109;
 }
 .ef-add-menu {
-  position: absolute;
-  bottom: calc(100% + 2px);
-  left: 0;
-  z-index: 110;
+  z-index: 1100;
   min-width: 170px;
   background: #fff;
   border: 1px solid #d1d5db;
