@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { CircleCheck, ExternalLink, RefreshCw, Send } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import { Link, useParams } from 'react-router-dom';
@@ -13,8 +13,9 @@ import { MicrosoftDataverseService } from '../generated/services/MicrosoftDatave
 import { QueueitemsService } from '../generated/services/QueueitemsService';
 import { Vsi_armsconfigurationsService } from '../generated/services/Vsi_armsconfigurationsService';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
+import { farmsApi } from '../services/farmsApi';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
-import { calculateVariance, formatCurrencyOr, formatVariancePercent, getTaskStatusLabel } from '../utils/helpers';
+import { formatCurrencyOr } from '../utils/helpers';
 
 const DATAVERSE_ORG_URL = 'https://aff-brmb-crm-dev.crm3.dynamics.com/';
 const BENEFIT_MARGIN_COUNT = 5;
@@ -24,6 +25,61 @@ type CurrentUser = {
   systemUserId: string;
   displayName: string;
 };
+
+type CalculationTableKey = 'enrolmentFee' | 'benefit' | 'proxy' | 'manual';
+
+type CalculationError = string | {
+  message?: string;
+  errorMessage?: string;
+  [key: string]: unknown;
+};
+
+type EnwProductiveValue = {
+  bpuMargin?: number | null;
+  productiveValue?: number | null;
+};
+
+type EnwProductiveUnit = {
+  code?: string | null;
+  description?: string | null;
+  productiveCapacity?: number | null;
+  productiveValues?: EnwProductiveValue[] | null;
+};
+
+type EnwEnrolment = {
+  enrolmentFee?: number | null;
+  contributionMargin?: number | null;
+  benefitMarginYears?: number[] | null;
+  proxyMarginYears?: number[] | null;
+  enwProductiveUnits?: EnwProductiveUnit[] | null;
+  proxyMargins?: Array<number | null> | null;
+  benefitContributionMargin?: number | null;
+  benefitEnrolmentFee?: number | null;
+  proxyContributionMargin?: number | null;
+  proxyEnrolmentFee?: number | null;
+  manualContributionMargin?: number | null;
+  manualEnrolmentFee?: number | null;
+  enrolmentCalculationTypeCode?: string | null;
+  benefitMarginYearMinus2?: number | null;
+  benefitMarginYearMinus3?: number | null;
+  benefitMarginYearMinus4?: number | null;
+  benefitMarginYearMinus5?: number | null;
+  benefitMarginYearMinus6?: number | null;
+  benefitMarginYearMinus2Used?: boolean | null;
+  benefitMarginYearMinus3Used?: boolean | null;
+  benefitMarginYearMinus4Used?: boolean | null;
+  benefitMarginYearMinus5Used?: boolean | null;
+  benefitMarginYearMinus6Used?: boolean | null;
+  manualMarginYearMinus2?: number | null;
+  manualMarginYearMinus3?: number | null;
+  manualMarginYearMinus4?: number | null;
+};
+
+type EnrolmentWorkflowCalculation = {
+  benefitCalculationErrors?: CalculationError[] | null;
+  enwEnrolment?: EnwEnrolment | null;
+};
+
 type XrmWebApiHost = {
   Xrm?: {
     WebApi?: {
@@ -123,7 +179,100 @@ function getProgramYear(record: Vsi_participantprogramyears | null): number | nu
 function getBooleanText(value: unknown): string {
   if (value === true || value === 1 || value === '1') return 'Yes';
   if (value === false || value === 0 || value === '0') return 'No';
-  return '-';
+  return '';
+}
+
+function formatNumberOrBlank(value: unknown, fractionDigits: number): string {
+  if (value == null || value === '') return '';
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return String(value);
+  return numberValue.toLocaleString(undefined, {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+}
+
+function formatCurrencyBlank(value: unknown): string {
+  return formatCurrencyOr(value, '');
+}
+
+function getFarmsWorkflowErrorMessage(error: unknown): string {
+  const fallback = 'Unable to load FARMS enrolment calculation.';
+  const message = error instanceof Error ? error.message : String(error || fallback);
+  return message.includes('404') ? 'No ENW scenario has been created in FARMS.' : message;
+}
+
+function getErrorText(error: CalculationError): string {
+  if (typeof error === 'string') return error;
+  return error.message ?? error.errorMessage ?? JSON.stringify(error);
+}
+
+function getErrorSearchText(error: CalculationError): string {
+  if (typeof error === 'string') return error.toLowerCase();
+  return Object.values(error)
+    .filter(value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    .join(' ')
+    .toLowerCase();
+}
+
+function matchesCalculationTable(error: CalculationError, table: CalculationTableKey): boolean {
+  const text = getErrorSearchText(error);
+  if (!text) return false;
+  switch (table) {
+    case 'enrolmentFee':
+      return text.includes('enrolment fee') || text.includes('enrollment fee') || text.includes('enrolmentfee') || text.includes('enrollmentfee');
+    case 'benefit':
+      return text.includes('benefit');
+    case 'proxy':
+      return text.includes('proxy') || text.includes('productive') || text.includes('bpu');
+    case 'manual':
+      return text.includes('manual');
+    default:
+      return false;
+  }
+}
+
+function getTableErrorMessages(calculation: EnrolmentWorkflowCalculation | null, table: CalculationTableKey): string[] {
+  return (calculation?.benefitCalculationErrors ?? [])
+    .filter(error => matchesCalculationTable(error, table))
+    .map(getErrorText);
+}
+
+function getUnmatchedErrorMessages(calculation: EnrolmentWorkflowCalculation | null): string[] {
+  return (calculation?.benefitCalculationErrors ?? [])
+    .filter(error => !matchesCalculationTable(error, 'enrolmentFee')
+      && !matchesCalculationTable(error, 'benefit')
+      && !matchesCalculationTable(error, 'proxy')
+      && !matchesCalculationTable(error, 'manual'))
+    .map(getErrorText);
+}
+
+function CalculationErrorMessages({ messages }: { messages: string[] }) {
+  if (!messages.length) return null;
+  return (
+    <div className="calc-legacy-error" role="alert">
+      {messages.map((message, index) => (
+        <div key={`${message}-${index}`}>{message}</div>
+      ))}
+    </div>
+  );
+}
+
+function CalculationOption({ checked, label }: { checked: boolean; label: string }) {
+  return (
+    <label className="calc-benefit-option">
+      <input
+        className="calc-benefit-radio"
+        type="radio"
+        checked={checked}
+        readOnly
+        tabIndex={-1}
+        onChange={() => undefined}
+      />
+      <span className={`calc-benefit-radio-visual${checked ? ' calc-benefit-radio-visual-checked' : ''}`} aria-hidden="true" />
+      <span>{label}</span>
+    </label>
+  );
 }
 
 function getApprovalError(
@@ -165,7 +314,9 @@ export function EnrolmentCalculationPage() {
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [farmsApiTestMessage,] = useState('');
+  const [farmsWorkflowCalculation, setFarmsWorkflowCalculation] = useState<EnrolmentWorkflowCalculation | null>(null);
+  const [farmsWorkflowCalculationLoading, setFarmsWorkflowCalculationLoading] = useState(false);
+  const [farmsWorkflowCalculationError, setFarmsWorkflowCalculationError] = useState<string | null>(null);
   const [show45DayModal, setShow45DayModal] = useState(false);
   const [letterSentMessage, setLetterSentMessage] = useState<string | null>(null);
   const [counterActionLoading, setCounterActionLoading] = useState(false);
@@ -229,9 +380,6 @@ export function EnrolmentCalculationPage() {
         }
 
         setRecord(result.data);
-        try {
-        } catch {
-        }
 
         const participantId = result.data._vsi_participantid_value?.replace(/[{}]/g, '');
         setParticipantPin('');
@@ -277,21 +425,57 @@ export function EnrolmentCalculationPage() {
     };
   }, [refreshKey]);
 
-  const variance = useMemo(() => {
-    return calculateVariance(record?.vsi_calculatedenfee, record?.vsi_previousyearcalculatedenfee);
-  }, [record?.vsi_calculatedenfee, record?.vsi_previousyearcalculatedenfee]);
-
   const sharePointFolderUrl = record?.vsi_sharepointdocumentfolder;
   const programYear = useMemo(() => getProgramYear(record), [record]);
+  const farmsScenarioProgramYear = programYear ? programYear - 2 : null;
   const farmsScenarioUrl = useMemo(() => {
-    if (!farmsLegacyBaseUrl || !participantPin || !programYear) return '';
+    if (!farmsLegacyBaseUrl || !participantPin || !farmsScenarioProgramYear) return '';
     const params = new URLSearchParams({
       pin: participantPin,
-      year: String(programYear),
+      year: String(farmsScenarioProgramYear),
       refresh: 'true',
     });
     return `${farmsLegacyBaseUrl}/farm800.do?${params.toString()}`;
-  }, [farmsLegacyBaseUrl, participantPin, programYear]);
+  }, [farmsLegacyBaseUrl, participantPin, farmsScenarioProgramYear]);
+
+  useEffect(() => {
+    if (!participantPin || !farmsScenarioProgramYear) {
+      setFarmsWorkflowCalculation(null);
+      setFarmsWorkflowCalculationError(null);
+      setFarmsWorkflowCalculationLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setFarmsWorkflowCalculation(null);
+    setFarmsWorkflowCalculationError(null);
+    setFarmsWorkflowCalculationLoading(true);
+
+    farmsApi.getEnrolmentNoticeWorkflowCalculation<EnrolmentWorkflowCalculation>(
+      participantPin,
+      farmsScenarioProgramYear,
+    )
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.success) {
+          throw new Error(result.error?.message ?? 'Unable to load FARMS enrolment calculation.');
+        }
+        setFarmsWorkflowCalculation(result.data ?? null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setFarmsWorkflowCalculation(null);
+        setFarmsWorkflowCalculationError(getFarmsWorkflowErrorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setFarmsWorkflowCalculationLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [participantPin, farmsScenarioProgramYear]);
+
   const participantName = useMemo(() => {
     if (!record) return '';
     const raw = record as unknown as Record<string, unknown>;
@@ -300,23 +484,60 @@ export function EnrolmentCalculationPage() {
       ?? '') as string;
   }, [record]);
   const pin = participantPin || (participantPinLoading ? 'Loading...' : '-');
-  const benefitMarginYears = useMemo(() => {
+  const fallbackBenefitYears = useMemo(() => {
     return Array.from({ length: BENEFIT_MARGIN_COUNT }, (_, index) => (
       programYear ? String(programYear - (BENEFIT_MARGIN_COUNT + 1) + index) : `Year ${index + 1}`
     ));
   }, [programYear]);
-  const benefitMargins = useMemo(() => {
-    if (!record) return [];
-    return Array.from({ length: BENEFIT_MARGIN_COUNT }, (_, index) => {
+  const farmsEnrolment = farmsWorkflowCalculation?.enwEnrolment ?? null;
+  const calculationTypeCode = (farmsEnrolment?.enrolmentCalculationTypeCode ?? '').toUpperCase();
+  const benefitMarginRows = useMemo(() => {
+    const apiYears = farmsEnrolment?.benefitMarginYears?.map(String) ?? [];
+    const labels = apiYears.length ? apiYears : fallbackBenefitYears;
+    const apiMargins = [
+      farmsEnrolment?.benefitMarginYearMinus6,
+      farmsEnrolment?.benefitMarginYearMinus5,
+      farmsEnrolment?.benefitMarginYearMinus4,
+      farmsEnrolment?.benefitMarginYearMinus3,
+      farmsEnrolment?.benefitMarginYearMinus2,
+    ];
+    const apiUsed = [
+      farmsEnrolment?.benefitMarginYearMinus6Used,
+      farmsEnrolment?.benefitMarginYearMinus5Used,
+      farmsEnrolment?.benefitMarginYearMinus4Used,
+      farmsEnrolment?.benefitMarginYearMinus3Used,
+      farmsEnrolment?.benefitMarginYearMinus2Used,
+    ];
+
+    return labels.map((label, index) => {
       const position = index + 1;
-      const raw = record as unknown as Record<string, unknown>;
+      const raw = (record ?? {}) as unknown as Record<string, unknown>;
       return {
-        label: benefitMarginYears[index],
-        margin: raw[`vsi_programyearmargin${position}`] as number | undefined,
-        used: raw[`vsi_programyearmargin${position}used`],
+        label,
+        margin: apiYears.length ? apiMargins[index] : raw[`vsi_programyearmargin${position}`],
+        used: apiYears.length ? apiUsed[index] : raw[`vsi_programyearmargin${position}used`],
       };
     });
-  }, [benefitMarginYears, record]);
+  }, [fallbackBenefitYears, farmsEnrolment, record]);
+  const proxyYears = useMemo(() => {
+    if (farmsEnrolment?.proxyMarginYears?.length) return farmsEnrolment.proxyMarginYears.map(String);
+    if (farmsScenarioProgramYear) {
+      return [farmsScenarioProgramYear - 2, farmsScenarioProgramYear - 1, farmsScenarioProgramYear].map(String);
+    }
+    return ['Year 1', 'Year 2', 'Year 3'];
+  }, [farmsEnrolment?.proxyMarginYears, farmsScenarioProgramYear]);
+  const manualMargins = [
+    farmsEnrolment?.manualMarginYearMinus4,
+    farmsEnrolment?.manualMarginYearMinus3,
+    farmsEnrolment?.manualMarginYearMinus2,
+  ];
+  const tableErrors = {
+    enrolmentFee: getTableErrorMessages(farmsWorkflowCalculation, 'enrolmentFee'),
+    benefit: getTableErrorMessages(farmsWorkflowCalculation, 'benefit'),
+    proxy: getTableErrorMessages(farmsWorkflowCalculation, 'proxy'),
+    manual: getTableErrorMessages(farmsWorkflowCalculation, 'manual'),
+    unmatched: getUnmatchedErrorMessages(farmsWorkflowCalculation),
+  };
 
   const resolveUser = async (): Promise<CurrentUser> => {
     if (currentUser) return currentUser;
@@ -485,7 +706,6 @@ export function EnrolmentCalculationPage() {
                 <CircleCheck size={14} aria-hidden="true" />
                 {approving ? 'Approving...' : 'Approve'}
               </button>
-              {farmsApiTestMessage && <span className="calc-inline-status">{farmsApiTestMessage}</span>}
             </div>
 
             {record && record.vsi_enrolmentstatus === 865520010 && (() => {
@@ -600,23 +820,45 @@ export function EnrolmentCalculationPage() {
 
       {loading && <p className="calc-state">Loading summary...</p>}
       {error && <p className="calc-state calc-state-error">Error loading summary: {error}</p>}
+      {farmsWorkflowCalculationLoading && <p className="calc-state">Loading FARMS enrolment calculation...</p>}
+      {farmsWorkflowCalculationError && <p className="calc-state calc-state-error">{farmsWorkflowCalculationError}</p>}
 
       {!loading && !error && record && (
-        <>
-          <div className="calc-benefit-section" aria-label="Benefit margin calculation">
-            <div className="calc-benefit-option">
-              <span className="calc-benefit-radio" aria-hidden="true" />
-              <span>Calculate using Benefit Margins</span>
+        <div className="calc-legacy-workflow" aria-label="FARMS enrolment calculation">
+          <CalculationErrorMessages messages={tableErrors.unmatched} />
+
+          <section className="calc-legacy-panel" aria-label="Enrolment fee">
+            <h2 className="calc-legacy-title">Enrolment Fee</h2>
+            <CalculationErrorMessages messages={tableErrors.enrolmentFee} />
+            <div className="calc-legacy-table-wrap">
+              <table className="calc-legacy-table calc-legacy-table-compact">
+                <thead>
+                  <tr>
+                    <th scope="col">Contribution Margin</th>
+                    <th scope="col">Fee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{formatCurrencyBlank(farmsEnrolment?.contributionMargin ?? record.vsi_contributionmargin)}</td>
+                    <td>{formatCurrencyBlank(farmsEnrolment?.enrolmentFee ?? record.vsi_enrolmentfee)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+          </section>
 
+          <section className="calc-legacy-panel" aria-label="Benefit margin calculation">
+            <CalculationOption checked={!calculationTypeCode || calculationTypeCode === 'BENEFIT'} label="Calculate using Benefit Margins" />
             <h2 className="calc-benefit-title">Production Margins after Structural Change</h2>
+            <CalculationErrorMessages messages={tableErrors.benefit} />
 
-            <div className="calc-benefit-table-wrap">
-              <table className="calc-benefit-table">
+            <div className="calc-legacy-table-wrap">
+              <table className="calc-legacy-table calc-benefit-table">
                 <thead>
                   <tr>
                     <th scope="col"></th>
-                    {benefitMargins.map(item => (
+                    {benefitMarginRows.map(item => (
                       <th key={item.label} scope="col">{item.label}</th>
                     ))}
                     <th scope="col">Contribution Margin</th>
@@ -626,15 +868,15 @@ export function EnrolmentCalculationPage() {
                 <tbody>
                   <tr>
                     <th scope="row">Margin</th>
-                    {benefitMargins.map(item => (
-                      <td key={item.label}>{formatCurrencyOr(item.margin, '-')}</td>
+                    {benefitMarginRows.map(item => (
+                      <td key={item.label}>{formatCurrencyBlank(item.margin)}</td>
                     ))}
-                    <td>{formatCurrencyOr(record.vsi_contributionmargin, '-')}</td>
-                    <td>{formatCurrencyOr(record.vsi_enrolmentfee, '-')}</td>
+                    <td>{formatCurrencyBlank(farmsEnrolment?.benefitContributionMargin ?? record.vsi_contributionmargin)}</td>
+                    <td>{formatCurrencyBlank(farmsEnrolment?.benefitEnrolmentFee ?? record.vsi_enrolmentfee)}</td>
                   </tr>
                   <tr>
                     <th scope="row">Used In Calculation</th>
-                    {benefitMargins.map(item => (
+                    {benefitMarginRows.map(item => (
                       <td key={item.label}>{getBooleanText(item.used)}</td>
                     ))}
                     <td></td>
@@ -643,30 +885,123 @@ export function EnrolmentCalculationPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
 
-          <div className="calc-summary-card" aria-label="Enrolment summary card">
-            <h2 className="calc-summary-title">Summary</h2>
-            <div className="calc-summary-grid">
-              <div>
-                <div className="calc-label">Enrolment Name</div>
-                <div className="calc-value">{record.vsi_name || '-'}</div>
-              </div>
-              <div>
-                <div className="calc-label">Task Status</div>
-                <div className="calc-value">{getTaskStatusLabel(record.vsi_taskstatus) || '-'}</div>
-              </div>
-              <div>
-                <div className="calc-label">Calculated Fee</div>
-                <div className="calc-value">{formatCurrencyOr(record.vsi_calculatedenfee, '-')}</div>
-              </div>
-              <div>
-                <div className="calc-label">Variance</div>
-                <div className="calc-value">{formatVariancePercent(variance) || '-'}</div>
-              </div>
+          <section className="calc-legacy-panel" aria-label="Proxy margin calculation">
+            <CalculationOption checked={calculationTypeCode === 'PROXY'} label="Calculate using Proxy Margins" />
+            <h2 className="calc-benefit-title">Program Year Productive Value</h2>
+            <CalculationErrorMessages messages={tableErrors.proxy} />
+            <div className="calc-legacy-table-wrap">
+              <table className="calc-legacy-table calc-proxy-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Code</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Productive Capacity</th>
+                    {proxyYears.map(year => (
+                      <Fragment key={year}>
+                        <th scope="col">{year} BPU</th>
+                        <th scope="col">{year} Margin</th>
+                      </Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(farmsEnrolment?.enwProductiveUnits?.length ? farmsEnrolment.enwProductiveUnits : [null]).map((unit, rowIndex) => (
+                    <tr key={unit?.code ?? `blank-productive-unit-${rowIndex}`}>
+                      <th scope="row">{unit?.code ?? ''}</th>
+                      <td className="calc-legacy-text-cell">{unit?.description ?? ''}</td>
+                      <td>{formatNumberOrBlank(unit?.productiveCapacity, 3)}</td>
+                      {proxyYears.map((year, yearIndex) => {
+                        const productiveValue = unit?.productiveValues?.[yearIndex];
+                        return (
+                          <Fragment key={`${unit?.code ?? rowIndex}-${year}`}>
+                            <td>{formatCurrencyBlank(productiveValue?.bpuMargin)}</td>
+                            <td>{formatCurrencyBlank(productiveValue?.productiveValue)}</td>
+                          </Fragment>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  <tr>
+                    <th scope="row">Total</th>
+                    <td></td>
+                    <td></td>
+                    {proxyYears.map((year, yearIndex) => (
+                      <Fragment key={`${year}-total`}>
+                        <td></td>
+                        <td>{formatCurrencyBlank(farmsEnrolment?.proxyMargins?.[yearIndex])}</td>
+                      </Fragment>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
-        </>
+            <div className="calc-legacy-table-wrap">
+              <table className="calc-legacy-table calc-legacy-table-compact">
+                <thead>
+                  <tr>
+                    {proxyYears.map(year => (
+                      <th key={year} scope="col">{year}</th>
+                    ))}
+                    <th scope="col">Contribution Margin</th>
+                    <th scope="col">Enrolment Fee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {proxyYears.map((year, index) => (
+                      <td key={year}>{formatCurrencyBlank(farmsEnrolment?.proxyMargins?.[index])}</td>
+                    ))}
+                    <td>{formatCurrencyBlank(farmsEnrolment?.proxyContributionMargin)}</td>
+                    <td>{formatCurrencyBlank(farmsEnrolment?.proxyEnrolmentFee)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="calc-legacy-panel" aria-label="Manual margin calculation">
+            <CalculationOption checked={calculationTypeCode === 'MANUAL'} label="Calculate using Manually Entered Margins" />
+            <CalculationErrorMessages messages={tableErrors.manual} />
+            <div className="calc-legacy-table-wrap">
+              <table className="calc-legacy-table calc-manual-table">
+                <thead>
+                  <tr>
+                    {proxyYears.map(year => (
+                      <th key={year} scope="col">{year}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {proxyYears.map((year, index) => (
+                      <td key={year}>
+                        <span className="calc-manual-input">{formatCurrencyBlank(manualMargins[index])}</span>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="calc-legacy-table-wrap">
+              <table className="calc-legacy-table calc-legacy-table-compact">
+                <thead>
+                  <tr>
+                    <th scope="col">Contribution Margin</th>
+                    <th scope="col">Enrolment Fee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{formatCurrencyBlank(farmsEnrolment?.manualContributionMargin)}</td>
+                    <td>{formatCurrencyBlank(farmsEnrolment?.manualEnrolmentFee)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       )}
 
       <div className="calc-links">
