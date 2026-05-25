@@ -121,10 +121,13 @@ export function useEnrolmentData() {
           'vsi_manualreview',
           'vsi_enrolmentnoticesentdate',
           'vsi_fortyfivedayletterstartdate',
+          'vsi_fortyfivedaycounterpaused',
+          'vsi_fortyfivedaypausedate',
           'vsi_filereceiveddate',
           'vsi_enrolmentfeespaiddate',
           'vsi_prevyearpartnotverified',
           'vsi_variancecalculation',
+          'vsi_isnewparticipant',
         ],
         orderBy: ['vsi_taskstatus desc'],
       };
@@ -252,6 +255,8 @@ export function useSortedAndFilteredRows(
       case 'fee': return String(row.vsi_calculatedenfee ?? '');
       case 'hasPartners': return row.vsi_haspartners === true ? 'Yes' : 'No';
       case 'inCombinedFarm': return row.vsi_incombinedfarm === true ? 'Yes' : 'No';
+      case 'isNewParticipant': return row.vsi_isnewparticipant === true ? 'Yes' : 'No';
+      default: return '';
     }
   }, []);
 
@@ -332,7 +337,6 @@ export function useSortedAndFilteredRows(
         const matchesFlagged = isFlaggedByVariance(row);
         const matchesPartnerships = isYesValue(row.vsi_haspartners) || isYesValue(row.vsi_incombinedfarm);
         const matchesFortyFiveDayLetter = getEnrolmentStatusLabel(row.vsi_enrolmentstatus) === '_45DayLetter';
-
         if (filters.verifiedCalc && !matchesVerifiedCalc) return false;
         if (filters.unverifiedCalc && !matchesUnverifiedCalc) return false;
         if (filters.flagged && !matchesFlagged) return false;

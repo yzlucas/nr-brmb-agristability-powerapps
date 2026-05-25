@@ -55,10 +55,22 @@
 }
 
 .details-header-grid {
-  display: grid;
-  grid-template-columns: 1.1fr 0.8fr 0.7fr 1fr;
-  gap: 0.85rem 1.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 2rem;
   align-items: end;
+}
+
+.details-header-grid > *:nth-child(2) {
+  margin-left: 2rem;
+}
+
+.details-header-grid > *:nth-child(3) {
+  margin-left: auto;
+}
+
+.details-link-field {
+  justify-self: end;
 }
 
 .details-section-break {
@@ -114,15 +126,35 @@
   color: #e55a5a;
 }
 
-.details-link {
-  color: #2f80ed;
-  text-decoration: underline;
-  font-size: 0.88rem;
-  font-weight: 600;
+/* 45-day counter card embedded in the header band */
+.details-fortyfiveday-cell {
+  flex-basis: 100%;
+  justify-content: flex-end;
 }
 
-.details-link:hover {
-  color: #1e6bd6;
+.details-fortyfiveday-card {
+  padding: 0.4rem 0.75rem !important;
+  gap: 0.25rem !important;
+  min-width: 0 !important;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-title {
+  font-size: 0.68rem;
+  margin-bottom: 0;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-grid {
+  grid-template-columns: repeat(4, auto);
+  gap: 0.15rem 1.1rem;
+  margin-bottom: 0;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-label {
+  font-size: 0.62rem;
+}
+
+.details-fortyfiveday-card .calc-fortyfiveday-value {
+  font-size: 0.75rem;
 }
 
 .details-primary-history {
@@ -153,6 +185,10 @@
   display: inline-flex;
   align-items: center;
   min-height: 2rem;
+}
+
+.details-field:has(.details-checkbox-control) {
+  align-items: center;
 }
 
 .details-checkbox-control input[type="checkbox"] {

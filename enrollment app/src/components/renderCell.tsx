@@ -66,13 +66,19 @@ export function renderCell(
       const l = getEnrolmentStatusLabel(row.vsi_enrolmentstatus);
       const is45Day = l === '_45DayLetter';
       const startDate = is45Day ? row.vsi_fortyfivedayletterstartdate : undefined;
-      const days = startDate ? Math.floor(((Date.now() - 7 * 60 * 60 * 1000) - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) : null;
+      const paused = is45Day ? !!row.vsi_fortyfivedaycounterpaused : false;
+      const pauseDate = is45Day ? row.vsi_fortyfivedaypausedate : undefined;
+      // While paused: freeze the count at the moment of pausing; after resume the start date is shifted forward
+      const referenceDate = paused && pauseDate ? new Date(pauseDate).getTime() : Date.now() - 7 * 60 * 60 * 1000;
+      const days = startDate ? Math.floor((referenceDate - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) : null;
       return (
         <td key={key}>
           <div className="enrol-status-cell">
             <span className="enrol-badge">{formatEnrolmentStatusDisplay(l)}</span>
             {days !== null && (
-              <span className={`days-badge ${days >= 35 ? 'badge-red' : ''}`}>{days}d</span>
+              <span className={`days-badge ${days >= 35 && !paused ? 'badge-red' : ''} ${paused ? 'badge-paused' : ''}`}>
+                {paused ? '⏸ ' : ''}{days}d
+              </span>
             )}
           </div>
         </td>
@@ -136,6 +142,7 @@ export function renderCell(
     case 'hasPartners': return <td key={key}>{yesNo(row.vsi_haspartners)}</td>;
     case 'inCombinedFarm': return <td key={key}>{yesNo(row.vsi_incombinedfarm)}</td>;
     case 'manualReview': return <td key={key}>{yesNo(row.vsi_manualreview)}</td>;
+    case 'isNewParticipant': return <td key={key}>{yesNo(row.vsi_isnewparticipant)}</td>;
     case 'enrolNoticeDate': return <td key={key}>{fmtDate(row.vsi_enrolmentnoticesentdate)}</td>;
     case 'fileReceivedDate': return <td key={key}>{fmtDate(row.vsi_filereceiveddate)}</td>;
     case 'feesPaidDate': return <td key={key}>{fmtDate(row.vsi_enrolmentfeespaiddate)}</td>;

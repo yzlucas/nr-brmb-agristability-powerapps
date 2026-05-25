@@ -1016,6 +1016,37 @@
           "x-ms-schema-name": "vsi_firstmonthlateinformationfee_Base",
           "x-ms-read-only": true
         },
+        "vsi_fortyfivedaycounterpaused": {
+          "type": "string",
+          "title": "Forty Five Day Counter Paused",
+          "x-ms-dataverse-attribute": "vsi_fortyfivedaycounterpaused",
+          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-schema-name": "vsi_FortyFiveDayCounterPaused",
+          "enum": [
+            "No",
+            "Yes"
+          ],
+          "x-ms-enum-values": [
+            0,
+            1
+          ],
+          "Color": [
+            null,
+            null
+          ],
+          "x-ms-optionsetmetadataid": "04ba4a01-4755-f111-bec7-7c1e5254cc04",
+          "x-ms-isGlobal": false,
+          "x-ms-optionsetdisplayname": "Forty Five Day Counter Paused",
+          "x-ms-optionSetType": "Boolean"
+        },
+        "vsi_fortyfivedaycounterpausedname": {
+          "type": "string",
+          "title": "vsi_fortyfivedaycounterpausedname",
+          "x-ms-dataverse-attribute": "vsi_fortyfivedaycounterpausedname",
+          "x-ms-dataverse-type": "VirtualType",
+          "x-ms-schema-name": "vsi_fortyfivedaycounterpausedName",
+          "x-ms-read-only": true
+        },
         "vsi_fortyfivedaylettersent": {
           "type": "string",
           "title": "fortyFiveDayLetterSent",
@@ -1029,6 +1060,13 @@
           "x-ms-dataverse-attribute": "vsi_fortyfivedayletterstartdate",
           "x-ms-dataverse-type": "DateTimeType",
           "x-ms-schema-name": "vsi_FortyFiveDayLetterStartDate"
+        },
+        "vsi_fortyfivedaypausedate": {
+          "type": "string",
+          "title": "Forty Five Day Pause Date",
+          "x-ms-dataverse-attribute": "vsi_fortyfivedaypausedate",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "vsi_FortyFiveDayPauseDate"
         },
         "vsi_fullyprovinciallyfunded": {
           "type": "string",
@@ -1169,6 +1207,38 @@
           "x-ms-dataverse-attribute": "vsi_incombinedfarmname",
           "x-ms-dataverse-type": "VirtualType",
           "x-ms-schema-name": "vsi_incombinedfarmName",
+          "x-ms-read-only": true
+        },
+        "vsi_isnewparticipant": {
+          "type": "string",
+          "title": "Is New Participant",
+          "x-ms-dataverse-attribute": "vsi_isnewparticipant",
+          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-schema-name": "vsi_IsNewParticipant",
+          "x-ms-read-only": true,
+          "enum": [
+            "No",
+            "Yes"
+          ],
+          "x-ms-enum-values": [
+            0,
+            1
+          ],
+          "Color": [
+            null,
+            null
+          ],
+          "x-ms-optionsetmetadataid": "05cb7387-5c55-f111-bec7-7c1e5254c1d5",
+          "x-ms-isGlobal": false,
+          "x-ms-optionsetdisplayname": "Is New Participant",
+          "x-ms-optionSetType": "Boolean"
+        },
+        "vsi_isnewparticipantname": {
+          "type": "string",
+          "title": "vsi_isnewparticipantname",
+          "x-ms-dataverse-attribute": "vsi_isnewparticipantname",
+          "x-ms-dataverse-type": "VirtualType",
+          "x-ms-schema-name": "vsi_isnewparticipantName",
           "x-ms-read-only": true
         },
         "vsi_lateenrolmentfeesfinaldeadlinedate": {

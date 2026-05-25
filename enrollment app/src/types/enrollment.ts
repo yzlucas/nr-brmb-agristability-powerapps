@@ -1,4 +1,4 @@
-import type { Vsi_participantprogramyears } from "../generated/models/Vsi_participantprogramyearsModel";
+﻿import type { Vsi_participantprogramyears } from "../generated/models/Vsi_participantprogramyearsModel";
 
 export type SortDir = 'asc' | 'desc';
 
@@ -8,7 +8,7 @@ export type SortKey =
   | 'enrolmentFee' | 'latePay' | 'regionalOffice' | 'farmingSector'
   | 'bringForward' | 'broughtForward' | 'hasPartners' | 'inCombinedFarm'
   | 'manualReview' | 'enrolNoticeDate' | 'fileReceivedDate' | 'feesPaidDate'
-  | 'modifiedOn' | 'owner' | 'flagged';
+  | 'modifiedOn' | 'owner' | 'flagged' | 'isNewParticipant';
 
 export type ColumnIcon = 'text' | 'number' | 'list' | 'link' | 'user' | 'check' | 'date';
 
@@ -21,7 +21,7 @@ export interface ColumnDef {
 
 export type FilterOperator = 'equals' | 'notEquals';
 
-export type AdvFilterField = 'taskStatus' | 'enrolStatus' | 'pin' | 'producer' | 'fee' | 'hasPartners' | 'inCombinedFarm';
+export type AdvFilterField = 'taskStatus' | 'enrolStatus' | 'pin' | 'producer' | 'fee' | 'hasPartners' | 'inCombinedFarm' | 'isNewParticipant';
 export type AdvFilterOp = 'equals' | 'notEquals' | 'contains' | 'notContains' | 'beginsWith' | 'endsWith';
 export type LogicOp = 'AND' | 'OR';
 
@@ -75,4 +75,3 @@ export interface PersonalView extends ViewPayload {
 }
 
 export type EnrolmentRow = Vsi_participantprogramyears;
-

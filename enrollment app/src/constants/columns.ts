@@ -25,6 +25,7 @@ export const ALL_COLUMNS: ColumnDef[] = [
   { key: 'enrolNoticeDate', label: 'EN Notice Sent Date', icon: 'date', removable: true },
   { key: 'fileReceivedDate', label: 'File Received Date', icon: 'date', removable: true },
   { key: 'feesPaidDate', label: 'Fees Paid Date', icon: 'date', removable: true },
+  { key: 'isNewParticipant', label: 'New Participant', icon: 'check', removable: true },
 ];
 
 export const DEFAULT_VISIBLE_KEYS: SortKey[] = [
@@ -56,6 +57,7 @@ export const SORTKEY_TO_FIELD: Record<SortKey, string> = {
   fileReceivedDate: 'vsi_filereceiveddate',
   feesPaidDate: 'vsi_enrolmentfeespaiddate',
   flagged: 'vsi_previousyearcalculatedenfee',
+  isNewParticipant: 'vsi_isnewparticipant',
 };
 
 export const FIELD_TO_SORTKEY: Record<string, SortKey> = {
@@ -98,6 +100,7 @@ export const ADV_FIELD_LABELS: Record<string, string> = {
   fee: 'Total Fee',
   hasPartners: 'Has Partners',
   inCombinedFarm: 'In Combined Farm',
+  isNewParticipant: 'New Participant',
 };
 
 export const ADV_FIELD_OPTIONS: Record<string, 'choice' | 'text'> = {
@@ -108,6 +111,7 @@ export const ADV_FIELD_OPTIONS: Record<string, 'choice' | 'text'> = {
   fee: 'text',
   hasPartners: 'choice',
   inCombinedFarm: 'choice',
+  isNewParticipant: 'choice',
 };
 
 export const ADV_OP_LABELS: Record<string, string> = {

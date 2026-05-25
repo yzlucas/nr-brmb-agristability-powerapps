@@ -1,4 +1,4 @@
-import type { SortKey, PersonalView, ViewPayload, QuickFilterState, AdvFilterNode, AdvFilterField } from '../types/enrollment';
+import type { SortKey, PersonalView, ViewPayload, QuickFilterState, AdvFilterNode, AdvFilterField, AdvFilterOp } from '../types/enrollment';
 import type { Userqueries } from '../generated/models/UserqueriesModel';
 import type { Savedqueries } from '../generated/models/SavedqueriesModel';
 import { SORTKEY_TO_FIELD, FIELD_TO_SORTKEY, DEFAULT_VIEW_SNAPSHOT, ACTIVE_VIEW_KEY } from '../constants/columns';
@@ -97,8 +97,7 @@ export function generateFetchXml(keys: SortKey[], advFilterNodes: unknown[] = []
   if (advFilterNodes.length > 0) {
     const nodes = deserializeFilterNodes(advFilterNodes);
     const parts = nodes.map(advNodeToFilterXml).filter(Boolean);
-    if (parts.length === 1) filterXml = parts[0];
-    else if (parts.length > 1) filterXml = `<filter type="and">${parts.join('')}</filter>`;
+    if (parts.length > 0) filterXml = `<filter type="and">${parts.join('')}</filter>`;
   }
 
   return `<fetch><entity name="vsi_participantprogramyear">${attrs}${filterXml}<order attribute="vsi_name" descending="false"/></entity></fetch>`;
@@ -113,6 +112,7 @@ const ADV_FIELD_TO_ATTR: Partial<Record<AdvFilterField, string>> = {
   fee: 'vsi_calculatedenfee',
   hasPartners: 'vsi_haspartners',
   inCombinedFarm: 'vsi_incombinedfarm',
+  isNewParticipant: 'vsi_isnewparticipant',
   // producer omitted — lookup display name requires linked-entity join
 };
 
@@ -133,7 +133,7 @@ function advRowToConditions(node: AdvFilterNode & { kind: 'row' }): string {
   if (!attr || !node.field) return '';
 
   // Boolean fields (Yes/No)
-  if (node.field === 'hasPartners' || node.field === 'inCombinedFarm') {
+  if (node.field === 'hasPartners' || node.field === 'inCombinedFarm' || node.field === 'isNewParticipant') {
     if (node.values.size === 0) return '';
     const op = node.operator === 'notEquals' ? 'ne' : 'eq';
     const conds = [...node.values].map(v => `<condition attribute="${attr}" operator="${op}" value="${v === 'Yes' ? '1' : '0'}"/>`);
@@ -233,19 +233,27 @@ export function userqueryToView(uq: Userqueries): PersonalView {
   try {
     const payload: ViewPayload = JSON.parse(uq.layoutjson ?? '{}');
     if (payload.visibleColumnKeys) {
+      // Fall back to parsing fetchxml for advFilterNodes if layoutjson didn't
+      // persist them (e.g. Dataverse may not return layoutjson immediately after create).
+      const advFilterNodes =
+        Array.isArray(payload.advFilterNodes) && payload.advFilterNodes.length > 0
+          ? payload.advFilterNodes
+          : serializeFilterNodes(parseFetchXmlToAdvNodes(uq.fetchxml));
       return {
         id: uq.userqueryid,
         name: uq.name,
         source: 'personal',
         ...payload,
+        advFilterNodes,
         filters: { ...DEFAULT_VIEW_SNAPSHOT.filters, ...payload.filters },
       };
     }
   } catch { /* layoutjson not in our format */ }
   const xmlCols = parseLayoutXml(uq.layoutxml);
+  const advFilterNodes = serializeFilterNodes(parseFetchXmlToAdvNodes(uq.fetchxml));
   const snapshot: ViewPayload = xmlCols
-    ? { ...DEFAULT_VIEW_SNAPSHOT, visibleColumnKeys: xmlCols }
-    : { ...DEFAULT_VIEW_SNAPSHOT };
+    ? { ...DEFAULT_VIEW_SNAPSHOT, visibleColumnKeys: xmlCols, advFilterNodes }
+    : { ...DEFAULT_VIEW_SNAPSHOT, advFilterNodes };
   return { id: uq.userqueryid, name: uq.name, source: 'personal', ...snapshot };
 }
 
@@ -278,11 +286,33 @@ export function savedqueryToView(sq: Savedqueries): PersonalView {
   return { id: sq.savedqueryid, name: sq.name, source: 'system', ...snapshot };
 }
 
-/** Map Dataverse condition attributes to AdvFilterField for boolean (yes/no) fields. */
-const BOOLEAN_CONDITION_FIELDS: Record<string, AdvFilterField> = {
-  vsi_haspartners: 'hasPartners',
-  vsi_incombinedfarm: 'inCombinedFarm',
+/** Describes how to parse a Dataverse condition attribute into an AdvFilterNode row. */
+type FieldSpec =
+  | { field: AdvFilterField; kind: 'boolean' }
+  | { field: AdvFilterField; kind: 'enum'; map: Record<string | number, string> }
+  | { field: AdvFilterField; kind: 'text' };
+
+const CONDITION_FIELD_SPECS: Record<string, FieldSpec> = {
+  vsi_haspartners:      { field: 'hasPartners',      kind: 'boolean' },
+  vsi_incombinedfarm:   { field: 'inCombinedFarm',   kind: 'boolean' },
+  vsi_isnewparticipant: { field: 'isNewParticipant', kind: 'boolean' },
+  vsi_taskstatus:       { field: 'taskStatus',       kind: 'enum', map: Vsi_participantprogramyearsvsi_taskstatus },
+  vsi_enrolmentstatus:  { field: 'enrolStatus',      kind: 'enum', map: Vsi_participantprogramyearsvsi_enrolmentstatus },
+  vsi_name:             { field: 'pin',              kind: 'text' },
+  vsi_producerfullname: { field: 'producer',         kind: 'text' },
+  vsi_calculatedenfee:  { field: 'fee',              kind: 'text' },
 };
+
+function fetchXmlOpToAdvOp(op: string, kind: FieldSpec['kind']): AdvFilterOp {
+  if (op === 'ne' || op === 'neq' || op === 'not-eq') return 'notEquals';
+  if (kind === 'text') {
+    if (op === 'not-like') return 'notContains';
+    if (op === 'like') return 'contains';
+    if (op === 'begins-with') return 'beginsWith';
+    if (op === 'ends-with') return 'endsWith';
+  }
+  return 'equals';
+}
 
 /**
  * Parse a Dataverse fetchxml `<filter>` element and convert conditions for
@@ -307,23 +337,33 @@ export function parseFetchXmlToAdvNodes(fetchxml: string | undefined | null): Ad
         if (child.tagName === 'condition') {
           const attr = child.getAttribute('attribute') ?? '';
           const op = child.getAttribute('operator') ?? 'eq';
-          const rawVal = child.getAttribute('value') ?? '1';
-          const field = BOOLEAN_CONDITION_FIELDS[attr];
-          if (!field) continue;
+          const rawVal = child.getAttribute('value') ?? '';
+          const spec = CONDITION_FIELD_SPECS[attr];
+          if (!spec) continue;
 
-          const isTrue = rawVal === '1' || rawVal.toLowerCase() === 'true';
-          const isNegated = op === 'ne' || op === 'neq' || op === 'not-eq';
-          const choiceVal = isTrue ? 'Yes' : 'No';
-          const operator = isNegated ? 'notEquals' : 'equals';
+          const operator = fetchXmlOpToAdvOp(op, spec.kind);
 
-          children.push({
-            kind: 'row',
-            id: nextFilterId(),
-            field,
-            operator,
-            values: new Set([choiceVal]),
-            textValue: '',
-          });
+          if (spec.kind === 'boolean') {
+            const isTrue = rawVal === '1' || rawVal.toLowerCase() === 'true';
+            children.push({
+              kind: 'row', id: nextFilterId(), field: spec.field,
+              operator, values: new Set([isTrue ? 'Yes' : 'No']), textValue: '',
+            });
+          } else if (spec.kind === 'enum') {
+            const label = spec.map[rawVal as keyof typeof spec.map];
+            if (!label) continue;
+            children.push({
+              kind: 'row', id: nextFilterId(), field: spec.field,
+              operator, values: new Set([label]), textValue: '',
+            });
+          } else {
+            // text / numeric — strip surrounding % from LIKE wildcards
+            const textValue = rawVal.replace(/^%|%$/g, '');
+            children.push({
+              kind: 'row', id: nextFilterId(), field: spec.field,
+              operator, values: new Set<string>(), textValue,
+            });
+          }
         } else if (child.tagName === 'filter') {
           const siblingType = (child.getAttribute('type') ?? 'and').toUpperCase();
           if (siblingType === 'OR') hasOrSiblingFilter = true;
