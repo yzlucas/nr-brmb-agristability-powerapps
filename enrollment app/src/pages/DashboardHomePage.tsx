@@ -368,12 +368,44 @@ export function DashboardHomePage() {
           v => v.source === 'system' && /partnership|combined/i.test(v.name)
         );
         if (partnerView) {
+          // Capture current filter state before the view switch replaces it
+          const prevFilters = filters;
+          const prevTaskStatusFilter = taskStatusFilter;
+          const prevEnrolStatusFilter = enrolStatusFilter;
+          const prevTaskFilterOp = taskFilterOp;
+          const prevEnrolFilterOp = enrolFilterOp;
+          const prevAdvFilterNodes = advFilterNodes;
+          const prevAdvLogicOp = advLogicOp;
+          // Apply the view (columns, sort, widths), then restore existing filters + add partnerships
           handleSelectView(partnerView.id);
+          setFilters({ ...prevFilters, partnerships: true });
+          setTaskStatusFilter(prevTaskStatusFilter);
+          setEnrolStatusFilter(prevEnrolStatusFilter);
+          setTaskFilterOp(prevTaskFilterOp);
+          setEnrolFilterOp(prevEnrolFilterOp);
+          setAdvFilterNodes(prevAdvFilterNodes);
+          setAdvLogicOp(prevAdvLogicOp);
           setCurrentPage(1);
-          return; // handleSelectView sets filters via applyView — don't also call setFilters
+          return;
         }
       } else {
+        // Capture current filter state before the default view resets it
+        const prevFilters = filters;
+        const prevTaskStatusFilter = taskStatusFilter;
+        const prevEnrolStatusFilter = enrolStatusFilter;
+        const prevTaskFilterOp = taskFilterOp;
+        const prevEnrolFilterOp = enrolFilterOp;
+        const prevAdvFilterNodes = advFilterNodes;
+        const prevAdvLogicOp = advLogicOp;
+        // Restore default layout (columns, sort, widths), then reapply existing filters minus partnerships
         handleResetDefault();
+        setFilters({ ...prevFilters, partnerships: false });
+        setTaskStatusFilter(prevTaskStatusFilter);
+        setEnrolStatusFilter(prevEnrolStatusFilter);
+        setTaskFilterOp(prevTaskFilterOp);
+        setEnrolFilterOp(prevEnrolFilterOp);
+        setAdvFilterNodes(prevAdvFilterNodes);
+        setAdvLogicOp(prevAdvLogicOp);
         setCurrentPage(1);
         return;
       }
