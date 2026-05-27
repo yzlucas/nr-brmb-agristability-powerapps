@@ -331,7 +331,6 @@ export function EnrolmentCalculationPage() {
   const [counterActionError, setCounterActionError] = useState<string | null>(null);
   const [queueWorkerName, setQueueWorkerName] = useState<string | null>(null);
   const [queueWorkerId, setQueueWorkerId] = useState<string | null>(null);
-  const [queueItemId, setQueueItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -439,7 +438,6 @@ export function EnrolmentCalculationPage() {
         if (cancelled) return;
         setCurrentUser({ systemUserId: user.systemUserId, displayName: user.displayName });
         const q = queueResult.data?.[0];
-        setQueueItemId(q?.queueitemid ?? null);
         if (q && q._workerid_value) {
           const raw = q as unknown as Record<string, unknown>;
           setQueueWorkerName((raw['_workerid_value@OData.Community.Display.V1.FormattedValue'] as string) ?? null);
