@@ -279,7 +279,6 @@ function CalculationOption({ checked, label }: { checked: boolean; label: string
 
 function getApprovalError(
   record: Vsi_participantprogramyears,
-  currentUser: CurrentUser,
 ): string | null {
   const enrolmentName = record.vsi_name ?? 'This enrolment';
 
@@ -590,17 +589,6 @@ export function EnrolmentCalculationPage() {
     unmatched: getUnmatchedErrorMessages(farmsWorkflowCalculation),
   };
 
-  const resolveUser = async (): Promise<CurrentUser> => {
-    if (currentUser) return currentUser;
-    const resolved = await resolveCurrentSystemUser();
-    const nextUser = {
-      systemUserId: resolved.systemUserId,
-      displayName: resolved.displayName,
-    };
-    setCurrentUser(nextUser);
-    return nextUser;
-  };
-
   const handle45DayPause = async () => {
     if (!record || !enrolmentId) return;
     setCounterActionLoading(true);
@@ -683,8 +671,7 @@ export function EnrolmentCalculationPage() {
     if (!record) return;
 
     try {
-      const user = await resolveUser();
-      const approvalError = getApprovalError(record, user);
+      const approvalError = getApprovalError(record);
       if (approvalError) {
         setApprovalErrorModal(approvalError);
         return;
@@ -702,8 +689,7 @@ export function EnrolmentCalculationPage() {
     setApproving(true);
     setError(null);
     try {
-      const user = await resolveUser();
-      const approvalError = getApprovalError(record, user);
+      const approvalError = getApprovalError(record);
       if (approvalError) {
         setShowApproveConfirm(false);
         setApprovalErrorModal(approvalError);
