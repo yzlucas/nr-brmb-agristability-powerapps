@@ -100,7 +100,19 @@ export function renderCell(
         </td>
       );
     }
-    case 'totalFeesOwedCalculated': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_totalfeesowedcalculated)}</td>;
+    case 'totalFeesOwedCalculated': {
+      const variance = row.vsi_calculatedenfee != null && row.vsi_variancecalculation != null ? row.vsi_variancecalculation * 100 : null;
+      const varianceClass = getVarianceClass(variance);
+      const varianceText = formatVariancePercent(variance);
+      return (
+        <td key={key} className="cell-fee">
+          <div className="calculated-fee-cell">
+            <span className="calculated-fee-value">{formatCurrency(row.vsi_totalfeesowedcalculated)}</span>
+            {variance != null ? <span className={`variance-pill ${varianceClass}`}>{varianceText}</span> : null}
+          </div>
+        </td>
+      );
+    }
     case 'totalFeesPaid': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_totalfeespaid)}</td>;
     case 'enrolmentFee': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_enrolmentfee)}</td>;
     case 'latePay': return <td key={key} className="cell-fee">{formatCurrency(row.vsi_latepaymentfee)}</td>;
