@@ -295,11 +295,6 @@ function getApprovalError(
     return `${enrolmentName} cannot be approved because it does not have a calculated fee.`;
   }
 
-  const raw = record as unknown as Record<string, unknown>;
-  if (normalizeGuid(raw['_ownerid_value'] as string) !== normalizeGuid(currentUser.systemUserId)) {
-    return `${enrolmentName} cannot be approved because you are not the owner of this enrolment.`;
-  }
-
   return null;
 }
 
@@ -322,6 +317,8 @@ export function EnrolmentCalculationPage() {
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [farmsWorkflowCalculation, setFarmsWorkflowCalculation] = useState<EnrolmentWorkflowCalculation | null>(null);
   const [farmsWorkflowCalculationLoading, setFarmsWorkflowCalculationLoading] = useState(false);
   const [farmsWorkflowCalculationError, setFarmsWorkflowCalculationError] = useState<string | null>(null);
@@ -655,6 +652,33 @@ export function EnrolmentCalculationPage() {
     }
   };
 
+  const handleCompleteConfirm = async () => {
+    if (!record || !enrolmentId) return;
+    setCompleting(true);
+    setError(null);
+    try {
+      const result = await Vsi_participantprogramyearsService.update(enrolmentId, {
+        vsi_taskstatus: 865520002, // Ready
+        vsi_enrolmentstatus: 865520006, // VerifiedENCalculalted
+      });
+      if (!result.success) {
+        throw new Error(result.error?.message ?? `Failed to complete ${enrolmentId}.`);
+      }
+      const completedFields: Partial<Vsi_participantprogramyears> = {
+        vsi_taskstatus: 865520002 as unknown as Vsi_participantprogramyears['vsi_taskstatus'],
+        vsi_enrolmentstatus: 865520006 as unknown as Vsi_participantprogramyears['vsi_enrolmentstatus'],
+      };
+      patchEnrolmentCache([{ id: enrolmentId, fields: completedFields }]);
+      setRecord(prev => prev ? { ...prev, ...completedFields } : prev);
+      setShowCompleteConfirm(false);
+      setRefreshKey(prev => prev + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Complete failed.');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   const handleApproveClick = async () => {
     if (!record) return;
 
@@ -786,6 +810,17 @@ export function EnrolmentCalculationPage() {
           >
             <CircleCheck size={14} aria-hidden="true" />
             {approving ? 'Approving...' : 'Approve'}
+          </button>
+        )}
+        {activeRole === 'Verifier' && (
+          <button
+            className="calc-outline-btn"
+            type="button"
+            onClick={() => setShowCompleteConfirm(true)}
+            disabled={!record || completing}
+          >
+            <CircleCheck size={14} aria-hidden="true" />
+            {completing ? 'Completing...' : 'Complete'}
           </button>
         )}
         <div className="calc-toolbar-gap" />
@@ -1118,6 +1153,18 @@ export function EnrolmentCalculationPage() {
           loading={approving}
           onConfirm={() => void handleApproveConfirm()}
           onCancel={() => setShowApproveConfirm(false)}
+        />
+      )}
+      {showCompleteConfirm && record && (
+        <ConfirmActionModal
+          title="Confirm Complete Enrolment"
+          message="This will set the task status to Ready and the enrolment status to Verified EN Calculated. Continue?"
+          enrolments={[{ id: record.vsi_participantprogramyearid, name: record.vsi_name ?? '' }]}
+          confirmLabel="Complete"
+          cancelLabel="Cancel"
+          loading={completing}
+          onConfirm={() => void handleCompleteConfirm()}
+          onCancel={() => setShowCompleteConfirm(false)}
         />
       )}
     </section>

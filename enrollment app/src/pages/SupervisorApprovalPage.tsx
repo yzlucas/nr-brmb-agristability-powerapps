@@ -504,10 +504,7 @@ export function SupervisorApprovalPage() {
     if (!APPROVABLE_STATUSES.has(row.item.vsi_enrolmentstatus as unknown as number)) return false;
     // Must have a calculated fee (not null)
     if (row.calculatedFeeValue == null) return false;
-    // Must be assigned to the current user
-    if (!currentUser?.systemUserId) return false;
-    const workerId = normalizeGuid(row.workMeta?.workerId);
-    return workerId === normalizeGuid(currentUser.systemUserId);
+    return true;
   };
 
   const getApprovalOwnershipError = (rows: SupervisorRowView[]): string | null => {
@@ -526,14 +523,7 @@ export function SupervisorApprovalPage() {
       return `${missingFee.enrolmentName} cannot be approved because it does not have a calculated fee.`;
     }
 
-    // Check if any are not picked by the current user
-    const notPicked = blockedRows.find(row => normalizeGuid(row.workMeta?.workerId) !== normalizeGuid(currentUser?.systemUserId));
-    if (notPicked) {
-      const assignedTo = notPicked.workMeta?.workerId ? `assigned to ${notPicked.workedBy}` : 'not picked';
-      return `${notPicked.enrolmentName} cannot be approved because it is ${assignedTo}. An enrolment must be picked by you before it can be approved.`;
-    }
-
-    return 'Some selected enrolments cannot be approved. Enrolments must have a status of Verified EN Calculated or Unverified EN Calculated, have a calculated fee, and be picked by you.';
+    return 'Some selected enrolments cannot be approved. Enrolments must have a status of Verified EN Calculated or Unverified EN Calculated and have a calculated fee.';
   };
 
   const bulkApprovalBlockedTooltip = 'One or more selected approvals is being worked on by another user';
