@@ -1,13 +1,14 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { CircleCheck, ExternalLink, RefreshCw, Send } from 'lucide-react';
+import { CircleCheck, ExternalLink, RefreshCw, Send, User } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
 import { Send45DayLetterModal } from '../components/Send45DayLetterModal';
 import { ConfirmActionModal } from '../components/ConfirmActionModal';
 import { ReferToSupervisorModal } from '../components/ReferToSupervisorModal';
 import { patchEnrolmentCache } from '../hooks/useEnrolmentData';
 import { removeSaItemsFromCache } from './SupervisorApprovalPage';
+import { useRole } from '../context/RoleContext';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
 import { MicrosoftDataverseService } from '../generated/services/MicrosoftDataverseService';
 import { QueueitemsService } from '../generated/services/QueueitemsService';
@@ -15,11 +16,12 @@ import { Vsi_armsconfigurationsService } from '../generated/services/Vsi_armscon
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
 import { farmsApi } from '../services/farmsApi';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
-import { formatCurrencyOr } from '../utils/helpers';
+import { formatCurrencyOr, getTaskStatusLabel } from '../utils/helpers';
 
 const DATAVERSE_ORG_URL = 'https://aff-brmb-crm-dev.crm3.dynamics.com/';
 const BENEFIT_MARGIN_COUNT = 5;
 const APPROVABLE_STATUSES = new Set([865520005, 865520006]);
+const APPROVABLE_TASK_STATUSES = new Set([865520000, 865520001, 865520002]); // Manual, Supervisor, Ready
 
 type CurrentUser = {
   systemUserId: string;
@@ -285,6 +287,10 @@ function getApprovalError(
     return `${enrolmentName} cannot be approved because its enrolment status is not Verified EN Calculated or Unverified EN Calculated.`;
   }
 
+  if (!APPROVABLE_TASK_STATUSES.has(record.vsi_taskstatus as unknown as number)) {
+    return `${enrolmentName} cannot be approved because its task status must be Manual, Supervisor, or Ready.`;
+  }
+
   if (record.vsi_calculatedenfee == null) {
     return `${enrolmentName} cannot be approved because it does not have a calculated fee.`;
   }
@@ -299,6 +305,8 @@ function getApprovalError(
 
 export function EnrolmentCalculationPage() {
   const { enrolmentId, source } = useParams<{ enrolmentId: string; source: string }>();
+  const navigate = useNavigate();
+  const { activeRole } = useRole();
   const backTo = source === 'supervisor' ? '/supervisor-approval' : '/dashboard-home';
   const backLabel = source === 'supervisor' ? 'Back to Supervisor Approval' : 'Back to Dashboard';
   const [record, setRecord] = useState<Vsi_participantprogramyears | null>(null);
@@ -321,6 +329,9 @@ export function EnrolmentCalculationPage() {
   const [letterSentMessage, setLetterSentMessage] = useState<string | null>(null);
   const [counterActionLoading, setCounterActionLoading] = useState(false);
   const [counterActionError, setCounterActionError] = useState<string | null>(null);
+  const [queueWorkerName, setQueueWorkerName] = useState<string | null>(null);
+  const [queueWorkerId, setQueueWorkerId] = useState<string | null>(null);
+  const [queueItemId, setQueueItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -340,6 +351,7 @@ export function EnrolmentCalculationPage() {
             'vsi_taskstatus',
             'vsi_enrolmentstatus',
             '_ownerid_value',
+            'owneridname',
             'vsi_calculatedenfee',
             'vsi_previousyearcalculatedenfee',
             'modifiedon',
@@ -404,6 +416,46 @@ export function EnrolmentCalculationPage() {
     return () => {
       cancelled = true;
     };
+  }, [enrolmentId, refreshKey]);
+
+  // Fetch queue worker (who has "picked" this enrolment in the supervisor queue)
+  useEffect(() => {
+    if (!enrolmentId) {
+      setQueueWorkerName(null);
+      setQueueWorkerId(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [queueResult, user] = await Promise.all([
+          QueueitemsService.getAll({
+            filter: `objectid_vsi_participantprogramyear/vsi_participantprogramyearid eq '${enrolmentId}' and statecode eq 0`,
+            select: ['queueitemid', '_workerid_value'],
+            maxPageSize: 1,
+          }),
+          resolveCurrentSystemUser(),
+        ]);
+        if (cancelled) return;
+        setCurrentUser({ systemUserId: user.systemUserId, displayName: user.displayName });
+        const q = queueResult.data?.[0];
+        setQueueItemId(q?.queueitemid ?? null);
+        if (q && q._workerid_value) {
+          const raw = q as unknown as Record<string, unknown>;
+          setQueueWorkerName((raw['_workerid_value@OData.Community.Display.V1.FormattedValue'] as string) ?? null);
+          setQueueWorkerId(q._workerid_value);
+        } else {
+          setQueueWorkerName(null);
+          setQueueWorkerId(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setQueueWorkerName(null);
+          setQueueWorkerId(null);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
   }, [enrolmentId, refreshKey]);
 
   useEffect(() => {
@@ -483,7 +535,11 @@ export function EnrolmentCalculationPage() {
       ?? raw['_vsi_participantid_value@OData.Community.Display.V1.FormattedValue']
       ?? '') as string;
   }, [record]);
-  const pin = participantPin || (participantPinLoading ? 'Loading...' : '-');
+  const ownerName = record
+    ? (record.owneridname || ((record as unknown as Record<string, unknown>)['_ownerid_value@OData.Community.Display.V1.FormattedValue'] as string | undefined) || null)
+    : null;
+  const taskStatusLabel = getTaskStatusLabel(record?.vsi_taskstatus) || null;
+  const workedByMe = !!(queueWorkerId && currentUser && normalizeGuid(queueWorkerId) === normalizeGuid(currentUser.systemUserId));
   const fallbackBenefitYears = useMemo(() => {
     return Array.from({ length: BENEFIT_MARGIN_COUNT }, (_, index) => (
       programYear ? String(programYear - (BENEFIT_MARGIN_COUNT + 1) + index) : `Year ${index + 1}`
@@ -670,153 +726,176 @@ export function EnrolmentCalculationPage() {
 
   return (
     <section className="page-card calc-page">
-      <div className="calc-record-header">
-        <div className="calc-record-main">
-          <div className="calc-pin-line">
-            <span>PIN:</span> {pin}
+      <div className="calc-title-row">
+        <button type="button" className="calc-back-btn" onClick={() => navigate(backTo)}>{backLabel}</button>
+        <span className="calc-page-label">Enrolment App / FARMS Calculation</span>
+        {(record || loading) && (
+          <div className="calc-meta-strip">
+            <span className="calc-meta-owner">
+              <User size={13} aria-hidden="true" />
+              {ownerName || (loading ? '...' : '—')}
+            </span>
+            {taskStatusLabel && (
+              <span className={`calc-task-badge calc-task-badge--${taskStatusLabel.toLowerCase()}`}>
+                {taskStatusLabel}
+              </span>
+            )}
+            {queueWorkerName && (
+              <>
+                <span className="calc-meta-sep" aria-hidden="true">•</span>
+                <span className="calc-meta-worked-by">
+                  Worked by: {workedByMe ? `${queueWorkerName} (you)` : queueWorkerName}
+                </span>
+              </>
+            )}
           </div>
-          <h1 className="calc-participant-name">{participantName || (loading ? 'Loading...' : '-')}</h1>
-          <div className="calc-actions-row">
-            <div className="calc-primary-actions">
-              <button className="calc-outline-btn" type="button" onClick={() => setShow45DayModal(true)}>Send 45-Day Letter</button>
-              <button
-                className="calc-outline-btn"
-                type="button"
-                onClick={() => setRefreshKey(prev => prev + 1)}
-                disabled={loading}
-              >
-                <RefreshCw size={14} aria-hidden="true" />
-                Refresh
-              </button>
-              <button
-                className="calc-outline-btn"
-                type="button"
-                onClick={() => setShowSupervisorModal(true)}
-                disabled={!record}
-              >
-                <Send size={14} aria-hidden="true" />
-                Refer to Supervisor
-              </button>
-              <button
-                className="calc-outline-btn"
-                type="button"
-                onClick={() => void handleApproveClick()}
-                disabled={!record || approving}
-              >
-                <CircleCheck size={14} aria-hidden="true" />
-                {approving ? 'Approving...' : 'Approve'}
-              </button>
-            </div>
-
-            {record && record.vsi_enrolmentstatus === 865520010 && (() => {
-              const startDate = record.vsi_fortyfivedayletterstartdate;
-              const paused = !!record.vsi_fortyfivedaycounterpaused;
-              const pauseDate = record.vsi_fortyfivedaypausedate;
-              const referenceMs = paused && pauseDate ? new Date(pauseDate).getTime() : Date.now();
-              const elapsedDays = startDate
-                ? Math.floor((referenceMs - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
-                : null;
-              const remainingDays = elapsedDays !== null ? 45 - elapsedDays : null;
-              return (
-                <div className="calc-fortyfiveday-card" aria-label="45-day letter counter">
-                  <div className="calc-fortyfiveday-title">45-Day Counter</div>
-                  <div className="calc-fortyfiveday-grid">
-                    <div>
-                      <div className="calc-fortyfiveday-label">Start Date</div>
-                      <div className="calc-fortyfiveday-value">{startDate ? new Date(startDate).toLocaleDateString() : '-'}</div>
-                    </div>
-                    <div>
-                      <div className="calc-fortyfiveday-label">Elapsed</div>
-                      <div className="calc-fortyfiveday-value">{elapsedDays !== null ? `${elapsedDays} / 45 days` : '-'}</div>
-                    </div>
-                    <div>
-                      <div className="calc-fortyfiveday-label">Remaining</div>
-                      <div className={`calc-fortyfiveday-value${remainingDays !== null && remainingDays <= 10 && !paused ? ' calc-fortyfiveday-warning' : ''}`}>
-                        {remainingDays !== null ? `${remainingDays} days` : '-'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="calc-fortyfiveday-label">Status</div>
-                      <div className="calc-fortyfiveday-value">
-                        {paused
-                          ? <span className="fortyfiveday-badge fortyfiveday-badge-paused">⏸ Paused{pauseDate ? ` since ${new Date(pauseDate).toLocaleDateString()}` : ''}</span>
-                          : <span className="fortyfiveday-badge fortyfiveday-badge-running">▶ Running</span>}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="calc-fortyfiveday-actions">
-                    {paused ? (
-                      <button
-                        className="calc-outline-btn"
-                        type="button"
-                        onClick={() => void handle45DayResume()}
-                        disabled={counterActionLoading}
-                      >
-                        {counterActionLoading ? 'Resuming...' : 'Resume Counter'}
-                      </button>
-                    ) : (
-                      <button
-                        className="calc-outline-btn"
-                        type="button"
-                        onClick={() => void handle45DayPause()}
-                        disabled={counterActionLoading}
-                      >
-                        {counterActionLoading ? 'Pausing...' : 'Pause Counter'}
-                      </button>
-                    )}
-                  </div>
-                  {counterActionError && <p className="calc-fortyfiveday-error">{counterActionError}</p>}
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-
-        <div className="calc-sharepoint-action">
-          {farmsScenarioUrl ? (
-            <a
-              className="calc-outline-btn calc-sharepoint-btn"
-              href={farmsScenarioUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ExternalLink size={14} aria-hidden="true" />
-              Open a Scenario in FARMS
-            </a>
-          ) : (
-            <button
-              className="calc-outline-btn calc-sharepoint-btn"
-              type="button"
-              disabled
-              title={loading || participantPinLoading || farmsLegacyBaseUrlLoading ? 'Loading FARMS scenario link' : 'FARMS URL, PIN, or program year is missing for this enrolment'}
-            >
-              <ExternalLink size={14} aria-hidden="true" />
-              Open a Scenario in FARMS
-            </button>
-          )}
-          {sharePointFolderUrl ? (
-            <a
-              className="calc-outline-btn calc-sharepoint-btn"
-              href={sharePointFolderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
-              Go to SharePoint
-            </a>
-          ) : (
-            <button
-              className="calc-outline-btn calc-sharepoint-btn"
-              type="button"
-              disabled
-              title={loading ? 'Loading SharePoint folder link' : 'No SharePoint folder link found for this enrolment'}
-            >
-              <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
-              Go to SharePoint
-            </button>
-          )}
-        </div>
+        )}
       </div>
+
+      <div className="calc-identity">
+        <Link to={`/enrolment/${source}/${enrolmentId}`} className="calc-enrolment-name-link">
+          {record?.vsi_name ?? (loading ? 'Loading...' : '-')}
+        </Link>
+        <h1 className="calc-participant-name">{participantName || (loading ? 'Loading...' : '-')}</h1>
+      </div>
+
+      <div className="calc-toolbar">
+        <button className="calc-outline-btn" type="button" onClick={() => setShow45DayModal(true)}>Send 45-Day Letter</button>
+        <button
+          className="calc-outline-btn"
+          type="button"
+          onClick={() => setRefreshKey(prev => prev + 1)}
+          disabled={loading}
+        >
+          <RefreshCw size={14} aria-hidden="true" />
+          Refresh
+        </button>
+        <button
+          className="calc-outline-btn"
+          type="button"
+          onClick={() => setShowSupervisorModal(true)}
+          disabled={!record}
+        >
+          <Send size={14} aria-hidden="true" />
+          Refer to Supervisor
+        </button>
+        {activeRole !== 'Verifier' && (
+          <button
+            className="calc-outline-btn"
+            type="button"
+            onClick={() => void handleApproveClick()}
+            disabled={!record || approving}
+          >
+            <CircleCheck size={14} aria-hidden="true" />
+            {approving ? 'Approving...' : 'Approve'}
+          </button>
+        )}
+        <div className="calc-toolbar-gap" />
+        {farmsScenarioUrl ? (
+          <a
+            className="calc-outline-btn calc-sharepoint-btn"
+            href={farmsScenarioUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink size={14} aria-hidden="true" />
+            Open a Scenario in FARMS
+          </a>
+        ) : (
+          <button
+            className="calc-outline-btn calc-sharepoint-btn"
+            type="button"
+            disabled
+            title={loading || participantPinLoading || farmsLegacyBaseUrlLoading ? 'Loading FARMS scenario link' : 'FARMS URL, PIN, or program year is missing for this enrolment'}
+          >
+            <ExternalLink size={14} aria-hidden="true" />
+            Open a Scenario in FARMS
+          </button>
+        )}
+        {sharePointFolderUrl ? (
+          <a
+            className="calc-outline-btn calc-sharepoint-btn"
+            href={sharePointFolderUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
+            Go to SharePoint
+          </a>
+        ) : (
+          <button
+            className="calc-outline-btn calc-sharepoint-btn"
+            type="button"
+            disabled
+            title={loading ? 'Loading SharePoint folder link' : 'No SharePoint folder link found for this enrolment'}
+          >
+            <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
+            Go to SharePoint
+          </button>
+        )}
+      </div>
+
+      {record && record.vsi_enrolmentstatus === 865520010 && (() => {
+        const startDate = record.vsi_fortyfivedayletterstartdate;
+        const paused = !!record.vsi_fortyfivedaycounterpaused;
+        const pauseDate = record.vsi_fortyfivedaypausedate;
+        const referenceMs = paused && pauseDate ? new Date(pauseDate).getTime() : Date.now();
+        const elapsedDays = startDate
+          ? Math.floor((referenceMs - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        const remainingDays = elapsedDays !== null ? 45 - elapsedDays : null;
+        return (
+          <div className="calc-fortyfiveday-card" aria-label="45-day letter counter">
+            <div className="calc-fortyfiveday-title">45-Day Counter</div>
+            <div className="calc-fortyfiveday-grid">
+              <div>
+                <div className="calc-fortyfiveday-label">Start Date</div>
+                <div className="calc-fortyfiveday-value">{startDate ? new Date(startDate).toLocaleDateString() : '-'}</div>
+              </div>
+              <div>
+                <div className="calc-fortyfiveday-label">Elapsed</div>
+                <div className="calc-fortyfiveday-value">{elapsedDays !== null ? `${elapsedDays} / 45 days` : '-'}</div>
+              </div>
+              <div>
+                <div className="calc-fortyfiveday-label">Remaining</div>
+                <div className={`calc-fortyfiveday-value${remainingDays !== null && remainingDays <= 10 && !paused ? ' calc-fortyfiveday-warning' : ''}`}>
+                  {remainingDays !== null ? `${remainingDays} days` : '-'}
+                </div>
+              </div>
+              <div>
+                <div className="calc-fortyfiveday-label">Status</div>
+                <div className="calc-fortyfiveday-value">
+                  {paused
+                    ? <span className="fortyfiveday-badge fortyfiveday-badge-paused">⏸ Paused{pauseDate ? ` since ${new Date(pauseDate).toLocaleDateString()}` : ''}</span>
+                    : <span className="fortyfiveday-badge fortyfiveday-badge-running">▶ Running</span>}
+                </div>
+              </div>
+            </div>
+            <div className="calc-fortyfiveday-actions">
+              {paused ? (
+                <button
+                  className="calc-outline-btn"
+                  type="button"
+                  onClick={() => void handle45DayResume()}
+                  disabled={counterActionLoading}
+                >
+                  {counterActionLoading ? 'Resuming...' : 'Resume Counter'}
+                </button>
+              ) : (
+                <button
+                  className="calc-outline-btn"
+                  type="button"
+                  onClick={() => void handle45DayPause()}
+                  disabled={counterActionLoading}
+                >
+                  {counterActionLoading ? 'Pausing...' : 'Pause Counter'}
+                </button>
+              )}
+            </div>
+            {counterActionError && <p className="calc-fortyfiveday-error">{counterActionError}</p>}
+          </div>
+        );
+      })()}
 
       {loading && <p className="calc-state">Loading summary...</p>}
       {error && <p className="calc-state calc-state-error">Error loading summary: {error}</p>}
@@ -1003,10 +1082,6 @@ export function EnrolmentCalculationPage() {
           </section>
         </div>
       )}
-
-      <div className="calc-links">
-        <Link to={backTo}>{backLabel}</Link>
-      </div>
 
       {showSupervisorModal && record && (
         <ReferToSupervisorModal

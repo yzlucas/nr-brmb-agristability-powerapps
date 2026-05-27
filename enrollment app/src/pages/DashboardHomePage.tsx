@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Columns2, Filter, Info } from 'lucide-react';
+import { Columns2, Filter, FilterX, Info, RefreshCw } from 'lucide-react';
 
 import type { SortKey, SortDir, FilterOperator, AdvFilterNode, LogicOp, QuickFilterState } from '../types/enrollment';
 import { DEFAULT_VISIBLE_KEYS } from '../constants/columns';
@@ -28,6 +28,26 @@ import { EnrolmentActionsBar } from '../components/EnrolmentActionsBar';
 
 const PAGE_SIZE = 300;
 
+// Module-level cache — persists filter/sort/pagination state across SPA navigations.
+type DashboardFilterCache = {
+  visibleColumnKeys: SortKey[];
+  columnWidths: Partial<Record<SortKey, number>>;
+  sortKey: SortKey | null;
+  sortDir: SortDir;
+  filters: QuickFilterState;
+  searchQuery: string;
+  taskStatusFilter: Set<string>;
+  enrolStatusFilter: Set<string>;
+  yearFilter: Set<string>;
+  ownerFilter: Set<string>;
+  taskFilterOp: FilterOperator;
+  enrolFilterOp: FilterOperator;
+  advFilterNodes: AdvFilterNode[];
+  advLogicOp: LogicOp;
+  currentPage: number;
+};
+let dashboardFilterCache: DashboardFilterCache | null = null;
+
 export function DashboardHomePage() {
   const { activeRole } = useRole();
   const { rows, setRows, loading, error, avatarUrls, fetchEnrolments, coreAppId, coreBaseUrl, fetchCoreAppId } = useEnrolmentData();
@@ -35,13 +55,13 @@ export function DashboardHomePage() {
   // Refresh handler is defined after useViews so reloadViews is available
 
   // Column & sort state
-  const [visibleColumnKeys, setVisibleColumnKeys] = useState<SortKey[]>([...DEFAULT_VISIBLE_KEYS]);
-  const [columnWidths, setColumnWidths] = useState<Partial<Record<SortKey, number>>>({});
-  const [sortKey, setSortKey] = useState<SortKey | null>('modifiedOn');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<SortKey[]>(() => dashboardFilterCache?.visibleColumnKeys ?? [...DEFAULT_VISIBLE_KEYS]);
+  const [columnWidths, setColumnWidths] = useState<Partial<Record<SortKey, number>>>(() => dashboardFilterCache?.columnWidths ?? {});
+  const [sortKey, setSortKey] = useState<SortKey | null>(() => dashboardFilterCache?.sortKey ?? 'modifiedOn');
+  const [sortDir, setSortDir] = useState<SortDir>(() => dashboardFilterCache?.sortDir ?? 'desc');
 
   // Filter state
-  const [filters, setFilters] = useState<QuickFilterState>({
+  const [filters, setFilters] = useState<QuickFilterState>(() => dashboardFilterCache?.filters ?? {
     verifiedCalc: false,
     unverifiedCalc: false,
     flagged: false,
@@ -49,23 +69,23 @@ export function DashboardHomePage() {
     fortyFiveDayLetter: false,
     varianceAlert: false,
   });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [taskStatusFilter, setTaskStatusFilter] = useState<Set<string>>(new Set());
-  const [enrolStatusFilter, setEnrolStatusFilter] = useState<Set<string>>(new Set());
-  const [yearFilter, setYearFilter] = useState<Set<string>>(new Set());
-  const [ownerFilter, setOwnerFilter] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState(() => dashboardFilterCache?.searchQuery ?? '');
+  const [taskStatusFilter, setTaskStatusFilter] = useState<Set<string>>(() => dashboardFilterCache?.taskStatusFilter ?? new Set());
+  const [enrolStatusFilter, setEnrolStatusFilter] = useState<Set<string>>(() => dashboardFilterCache?.enrolStatusFilter ?? new Set());
+  const [yearFilter, setYearFilter] = useState<Set<string>>(() => dashboardFilterCache?.yearFilter ?? new Set());
+  const [ownerFilter, setOwnerFilter] = useState<Set<string>>(() => dashboardFilterCache?.ownerFilter ?? new Set());
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     resolveCurrentSystemUser().then(u => setCurrentUserDisplayName(u.displayName)).catch(() => {});
   }, []);
-  const [taskFilterOp, setTaskFilterOp] = useState<FilterOperator>('equals');
-  const [enrolFilterOp, setEnrolFilterOp] = useState<FilterOperator>('equals');
-  const [advFilterNodes, setAdvFilterNodes] = useState<AdvFilterNode[]>([]);
-  const [advLogicOp, setAdvLogicOp] = useState<LogicOp>('AND');
+  const [taskFilterOp, setTaskFilterOp] = useState<FilterOperator>(() => dashboardFilterCache?.taskFilterOp ?? 'equals');
+  const [enrolFilterOp, setEnrolFilterOp] = useState<FilterOperator>(() => dashboardFilterCache?.enrolFilterOp ?? 'equals');
+  const [advFilterNodes, setAdvFilterNodes] = useState<AdvFilterNode[]>(() => dashboardFilterCache?.advFilterNodes ?? []);
+  const [advLogicOp, setAdvLogicOp] = useState<LogicOp>(() => dashboardFilterCache?.advLogicOp ?? 'AND');
 
   // Pagination & selection
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => dashboardFilterCache?.currentPage ?? 1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Panel visibility
@@ -214,6 +234,19 @@ export function DashboardHomePage() {
     setShowEditFilters(false);
   }, []);
 
+  // Persist filter/sort/pagination state so it survives navigating to details/calculation and back.
+  useEffect(() => {
+    dashboardFilterCache = {
+      visibleColumnKeys, columnWidths, sortKey, sortDir,
+      filters, searchQuery,
+      taskStatusFilter, enrolStatusFilter, yearFilter, ownerFilter,
+      taskFilterOp, enrolFilterOp, advFilterNodes, advLogicOp,
+      currentPage,
+    };
+  }, [visibleColumnKeys, columnWidths, sortKey, sortDir, filters, searchQuery,
+    taskStatusFilter, enrolStatusFilter, yearFilter, ownerFilter,
+    taskFilterOp, enrolFilterOp, advFilterNodes, advLogicOp, currentPage]);
+
   // Refresh handler for manual reload
   const handleRefresh = useCallback(() => {
     if (typeof fetchEnrolments === 'function') fetchEnrolments();
@@ -237,6 +270,13 @@ export function DashboardHomePage() {
     closePanels();
     handleDeleteView(id);
   }, [closePanels, handleDeleteView]);
+
+  const handleClearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setCurrentPage(1);
+    setSelectedIds(new Set());
+    handleResetDefaultAndClose();
+  }, [handleResetDefaultAndClose]);
 
   // Stable id of the NPP system view — used to detect when NPP mode is active.
   const nppViewId = useMemo(
@@ -395,15 +435,18 @@ export function DashboardHomePage() {
               <button type="button" className="sa-filter-btn" onClick={() => setShowEditFilters(true)}>
                 <Filter size={14} /> Edit filters
               </button>
+              <button type="button" className="sa-filter-btn" onClick={handleClearAllFilters}>
+                <FilterX size={14} /> Clear all filters
+              </button>
               <button type="button" className="sa-filter-btn" onClick={handleRefresh} disabled={loading}>
-                {loading ? 'Refreshing...' : 'Refresh'}
+                <RefreshCw size={14} />{loading ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
 
           <div className="worklist-box">
             <div className="worklist-item">
-              <Info size={15} className="worklist-icon" />
+              <Info size={14} className="worklist-icon" />
               <button className="worklist-link" onClick={() => {
                 const nppView = savedViews.find(v => v.source === 'system' && /npp/i.test(v.name));
                 if (nppView) {
@@ -415,7 +458,7 @@ export function DashboardHomePage() {
               </button>
             </div>
             <div className="worklist-item">
-              <Info size={15} className="worklist-icon" />
+              <Info size={14} className="worklist-icon" />
               {activeRole === 'Verifier' ? (
                 <button className="worklist-link" onClick={() => applyWorklistFilter('taskStatus', 'Supervisor')}>
                   Pending supervisor&rsquo;s approval: <strong>{rows.filter(r => r.vsi_taskstatus === 865520001).length}</strong>

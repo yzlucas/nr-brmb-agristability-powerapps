@@ -81,6 +81,64 @@ button:focus-visible {
   overflow: auto;
 }
 
+.calc-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.calc-back-btn {
+  border: 1px solid #d0d6dd;
+  background: #fff;
+  color: #334155;
+  border-radius: 6px;
+  padding: 0.38rem 0.8rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.calc-back-btn:hover {
+  background: #f1f5f9;
+}
+
+.calc-page-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2e3a47;
+}
+
+.calc-title-row .calc-meta-strip {
+  margin-left: auto;
+  margin-bottom: 0;
+}
+
+.calc-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.85rem;
+}
+
+.calc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.calc-toolbar-gap {
+  flex: 1;
+  min-width: 0.5rem;
+}
+
+/* kept for reference, no longer used in layout */
 .calc-record-header {
   display: flex;
   align-items: flex-end;
@@ -107,13 +165,65 @@ button:focus-visible {
   font-weight: 800;
 }
 
+.calc-enrolment-name-link {
+  color: #1d4ed8;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.calc-enrolment-name-link:hover {
+  color: #1e40af;
+}
+
 .calc-participant-name {
-  margin: 0.15rem 0 0.9rem;
+  margin: 0.15rem 0 0.4rem;
   color: #111827;
   font-size: 1.35rem;
   font-weight: 800;
   line-height: 1.2;
 }
+
+.calc-meta-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.calc-meta-owner {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.calc-meta-sep {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.calc-meta-worked-by {
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.calc-task-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.calc-task-badge--ready     { background: #dcfce7; color: #166534; }
+.calc-task-badge--supervisor { background: #fef9c3; color: #854d0e; }
+.calc-task-badge--manual    { background: #fee2e2; color: #991b1b; }
+.calc-task-badge--approved  { background: #dbeafe; color: #1e40af; }
 
 .calc-primary-actions {
   display: flex;
@@ -275,40 +385,39 @@ button:focus-visible {
 
 .calc-fortyfiveday-card {
   background: #ddeaf8;
-  border-radius: 16px;
-  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  padding: 0.4rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.25rem;
   align-self: flex-start;
-  min-width: 22rem;
 }
 
 .calc-fortyfiveday-title {
-  font-size: 0.82rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: #1a4f8b;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: 0.1rem;
+  margin-bottom: 0;
 }
 
 .calc-fortyfiveday-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem 1.2rem;
+  grid-template-columns: repeat(4, auto);
+  gap: 0.15rem 1.1rem;
 }
 
 .calc-fortyfiveday-label {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   color: #2b6cb0;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .calc-fortyfiveday-value {
-  margin-top: 0.1rem;
-  font-size: 0.88rem;
+  margin-top: 0.05rem;
+  font-size: 0.75rem;
   color: #1a4f8b;
   font-weight: 600;
 }
