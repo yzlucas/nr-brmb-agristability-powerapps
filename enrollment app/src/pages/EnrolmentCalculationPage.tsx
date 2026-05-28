@@ -228,7 +228,11 @@ function formatCurrencyBlank(value: unknown): string {
 function formatPercentText(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return '';
-  return trimmed.includes('%') ? trimmed : `${trimmed}%`;
+  if (trimmed.includes('%')) return trimmed;
+  const numberValue = Number(trimmed);
+  if (!Number.isFinite(numberValue)) return `${trimmed}%`;
+  const percentValue = numberValue > 0 && numberValue <= 1 ? numberValue * 100 : numberValue;
+  return `${percentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
 }
 
 function escapeODataString(value: string): string {
@@ -320,6 +324,71 @@ async function findPartnerEnrolment(pinValue: string, programYearId: string): Pr
     filter: `_vsi_programyearid_value eq '${safeProgramYearId}' and contains(vsi_name,'${safePin}')`,
   });
   return containsPin.data?.[0] ?? null;
+}
+
+function getListRecordRows(result: unknown): Vsi_participantprogramyears[] {
+  if (!result || typeof result !== 'object') return [];
+  const data = result as Record<string, unknown>;
+  const dynamicProperties = data.dynamicProperties;
+  const dynamicValue = dynamicProperties && typeof dynamicProperties === 'object'
+    ? (dynamicProperties as Record<string, unknown>).value
+    : undefined;
+  const rows = Array.isArray(data.value) ? data.value : dynamicValue;
+
+  return Array.isArray(rows)
+    ? rows
+      .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+      .map((row) => ({ ...row, ...(row.dynamicProperties as Record<string, unknown> | undefined) }) as unknown as Vsi_participantprogramyears)
+    : [];
+}
+
+function escapeFetchXmlValue(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+async function findPartnerSourceEnrolment(pinValue: string, programYear: number): Promise<Vsi_participantprogramyears | null> {
+  const fetchXml = [
+    '<fetch top="10">',
+    '  <entity name="vsi_participantprogramyear">',
+    '    <attribute name="vsi_participantprogramyearid" />',
+    '    <attribute name="vsi_name" />',
+    '    <attribute name="vsi_haspartners" />',
+    '    <attribute name="vsi_partnershippins" />',
+    '    <attribute name="vsi_partnershipnames" />',
+    '    <attribute name="vsi_partnershippercents" />',
+    '    <attribute name="vsi_enrolmentstatus" />',
+    '    <attribute name="vsi_enrolmentfee" />',
+    '    <filter type="and">',
+    `      <condition attribute="vsi_name" operator="like" value="%${escapeFetchXmlValue(String(programYear))}%" />`,
+    `      <condition attribute="vsi_name" operator="like" value="%${escapeFetchXmlValue(pinValue)}%" />`,
+    '      <condition attribute="vsi_haspartners" operator="eq" value="1" />',
+    '      <condition attribute="vsi_partnershippins" operator="not-null" />',
+    '    </filter>',
+    '  </entity>',
+    '</fetch>',
+  ].join('');
+
+  const result = await MicrosoftDataverseService.ListRecordsWithOrganization(
+    DATAVERSE_ORG_URL,
+    'vsi_participantprogramyears',
+    '',
+    'application/json',
+    false,
+    false,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    fetchXml,
+    10,
+  );
+
+  const rows = getListRecordRows(result.data);
+  return rows[0] ?? null;
 }
 
 function getFarmsWorkflowErrorMessage(error: unknown): string {
@@ -442,6 +511,10 @@ function PartnerViewPanel({
   onToggleOpen: () => void;
   onTogglePinned: () => void;
 }) {
+  const visibleRows = rows.filter((row): row is PartnerComparisonRow => (
+    !!row && typeof row.pin === 'string' && row.pin.trim().length > 0
+  ));
+
   if (!open) {
     return (
       <aside className="calc-comparison-panel calc-comparison-panel-collapsed" aria-label="Partner comparison panel">
@@ -475,10 +548,10 @@ function PartnerViewPanel({
 
       {loading && <p className="calc-panel-state">Loading partners...</p>}
       {error && <p className="calc-panel-state calc-panel-state-error">{error}</p>}
-      {!loading && !error && !rows.length && <p className="calc-panel-state">No partner data found.</p>}
-      {!loading && !error && rows.length > 0 && (
+      {!loading && !error && !visibleRows.length && <p className="calc-panel-state">No partner data found.</p>}
+      {!loading && !error && visibleRows.length > 0 && (
         <div className="calc-partner-list">
-          {rows.map(row => {
+          {visibleRows.map(row => {
             const enrolment = row.enrolment;
             const name = row.name || enrolment?.vsi_participantidname || '';
             const status = enrolment ? getEnrolmentStatusLabel(enrolment.vsi_enrolmentstatus) : '';
@@ -799,14 +872,6 @@ export function EnrolmentCalculationPage() {
 
     (async () => {
       try {
-        const lookupProgramYearId = await findProgramYearId(farmsScenarioProgramYear);
-        if (cancelled) return;
-        if (!lookupProgramYearId) {
-          setPartnerRowsError(`Unable to load partner data because lookup program year ${farmsScenarioProgramYear} was not found.`);
-          setPartnerRows([]);
-          return;
-        }
-
         const displayProgramYearId = currentProgramYearId
           ? normalizeGuid(currentProgramYearId)
           : await findProgramYearId(programYear);
@@ -817,7 +882,7 @@ export function EnrolmentCalculationPage() {
           return;
         }
 
-        const sourceEnrolment = await findPartnerEnrolment(participantPin, lookupProgramYearId);
+        const sourceEnrolment = await findPartnerSourceEnrolment(participantPin, farmsScenarioProgramYear);
         if (cancelled) return;
         if (!sourceEnrolment) {
           setPartnerRows([]);
