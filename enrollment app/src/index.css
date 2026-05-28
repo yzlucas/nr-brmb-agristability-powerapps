@@ -184,6 +184,62 @@ button:focus-visible {
   line-height: 1.2;
 }
 
+.calc-readonly-toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: fit-content;
+  margin-top: 0.05rem;
+  padding: 0.38rem 0.65rem;
+  background: #ffffff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+  user-select: none;
+}
+
+.calc-readonly-toggle-label {
+  white-space: nowrap;
+}
+
+.calc-readonly-toggle-options {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calc-readonly-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: inherit;
+}
+
+.calc-readonly-radio {
+  position: relative;
+  width: 0.68rem;
+  height: 0.68rem;
+  border: 1.5px solid #94a3b8;
+  border-radius: 50%;
+  background: #ffffff;
+  flex: 0 0 auto;
+}
+
+.calc-readonly-radio-checked {
+  border-color: #2563eb;
+}
+
+.calc-readonly-radio-checked::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
 .calc-meta-strip {
   display: flex;
   align-items: center;

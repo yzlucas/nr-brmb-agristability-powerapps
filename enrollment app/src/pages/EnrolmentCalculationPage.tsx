@@ -401,6 +401,24 @@ function CalculationOption({ checked, label }: { checked: boolean; label: string
   );
 }
 
+function ReadOnlyYesNoField({ label, value }: { label: string; value: boolean | null }) {
+  return (
+    <div className="calc-readonly-toggle-row" aria-label={label}>
+      <span className="calc-readonly-toggle-label">{label}</span>
+      <span className="calc-readonly-toggle-options" aria-hidden="true">
+        <span className="calc-readonly-radio-option">
+          <span className={`calc-readonly-radio${value === true ? ' calc-readonly-radio-checked' : ''}`} />
+          <span>Yes</span>
+        </span>
+        <span className="calc-readonly-radio-option">
+          <span className={`calc-readonly-radio${value === false ? ' calc-readonly-radio-checked' : ''}`} />
+          <span>No</span>
+        </span>
+      </span>
+    </div>
+  );
+}
+
 function PartnerViewPanel({
   rows,
   loading,
@@ -618,6 +636,7 @@ export function EnrolmentCalculationPage() {
             'vsi_partnershipnames',
             'vsi_partnershippins',
             'vsi_partnershippercents',
+            'vsi_isnewparticipant',
           ],
         });
 
@@ -1070,6 +1089,12 @@ export function EnrolmentCalculationPage() {
           {record?.vsi_name ?? (loading ? 'Loading...' : '-')}
         </Link>
         <h1 className="calc-participant-name">{participantName || (loading ? 'Loading...' : '-')}</h1>
+        {(record || loading) && (
+          <ReadOnlyYesNoField
+            label="Is this a New Participant?"
+            value={record ? record.vsi_isnewparticipant === true : null}
+          />
+        )}
       </div>
 
       <div className="calc-toolbar">
