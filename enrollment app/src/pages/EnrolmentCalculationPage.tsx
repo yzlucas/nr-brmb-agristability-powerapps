@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { CircleCheck, ExternalLink, RefreshCw, Send } from 'lucide-react';
+import { CircleCheck, ExternalLink, PanelRightClose, PanelRightOpen, Pin, RefreshCw, Send } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import { Link, useParams } from 'react-router-dom';
 import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
@@ -13,13 +13,33 @@ import { MicrosoftDataverseService } from '../generated/services/MicrosoftDatave
 import { QueueitemsService } from '../generated/services/QueueitemsService';
 import { Vsi_armsconfigurationsService } from '../generated/services/Vsi_armsconfigurationsService';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
+import { Vsi_programyearsService } from '../generated/services/Vsi_programyearsService';
 import { farmsApi } from '../services/farmsApi';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
-import { formatCurrencyOr } from '../utils/helpers';
+import { formatCurrencyOr, getEnrolmentStatusLabel } from '../utils/helpers';
 
 const DATAVERSE_ORG_URL = 'https://aff-brmb-crm-dev.crm3.dynamics.com/';
 const BENEFIT_MARGIN_COUNT = 5;
 const APPROVABLE_STATUSES = new Set([865520005, 865520006]);
+const PARTNER_ENROLMENT_SELECT = [
+  'vsi_name',
+  '_vsi_participantid_value',
+  '_vsi_programyearid_value',
+  'vsi_participantidname',
+  'vsi_participantprogramyearid',
+  'vsi_enrolmentstatus',
+  'vsi_enrolmentfee',
+  'vsi_calculatedenfee',
+  'vsi_sharepointdocumentfolder',
+  'vsi_haspartners',
+  'vsi_partnershipnames',
+  'vsi_partnershippins',
+  'vsi_partnershippercents',
+  'vsi_incombinedfarm',
+  'vsi_combinedfarmpins',
+  'vsi_combinedfarmpercents',
+  'new_combinedfarmname',
+];
 
 type CurrentUser = {
   systemUserId: string;
@@ -78,6 +98,13 @@ type EnwEnrolment = {
 type EnrolmentWorkflowCalculation = {
   benefitCalculationErrors?: CalculationError[] | null;
   enwEnrolment?: EnwEnrolment | null;
+};
+
+type PartnerComparisonRow = {
+  pin: string;
+  name: string;
+  percent: string;
+  enrolment?: Vsi_participantprogramyears;
 };
 
 type XrmWebApiHost = {
@@ -196,6 +223,103 @@ function formatCurrencyBlank(value: unknown): string {
   return formatCurrencyOr(value, '');
 }
 
+function formatPercentText(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  return trimmed.includes('%') ? trimmed : `${trimmed}%`;
+}
+
+function escapeODataString(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+function getCalculationHref(id: string, routeSource: string | undefined): string {
+  return `#/calculation/${routeSource || 'dashboard'}/${id}`;
+}
+
+function buildFarmsScenarioUrl(baseUrl: string, pinValue: string, scenarioProgramYear: number | null): string {
+  if (!baseUrl || !pinValue || !scenarioProgramYear) return '';
+  const params = new URLSearchParams({
+    pin: pinValue,
+    year: String(scenarioProgramYear),
+    refresh: 'true',
+  });
+  return `${baseUrl}/farm800.do?${params.toString()}`;
+}
+
+function parsePinList(value?: string | null): string[] {
+  return (value?.match(/\d+/g) ?? []).map(pinValue => pinValue.trim()).filter(Boolean);
+}
+
+function splitSummaryList(value: string | null | undefined, expectedCount: number): string[] {
+  const trimmed = value?.trim();
+  if (!trimmed) return [];
+
+  const preferred = trimmed
+    .split(/\r?\n|;|\|/)
+    .map(item => item.trim())
+    .filter(Boolean);
+  if (preferred.length === expectedCount) return preferred;
+
+  const commaSeparated = trimmed
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+  if (commaSeparated.length === expectedCount) return commaSeparated;
+
+  return preferred.length > 1 ? preferred : [trimmed];
+}
+
+function parsePercentList(value: string | null | undefined, expectedCount: number): string[] {
+  const matches = value?.match(/\d+(?:\.\d+)?%?/g) ?? [];
+  if (matches.length) return matches.map(formatPercentText);
+  return splitSummaryList(value, expectedCount).map(formatPercentText);
+}
+
+function getPartnerSummaries(record: Vsi_participantprogramyears | null): PartnerComparisonRow[] {
+  const pins = parsePinList(record?.vsi_partnershippins);
+  const names = splitSummaryList(record?.vsi_partnershipnames, pins.length);
+  const percents = parsePercentList(record?.vsi_partnershippercents, pins.length);
+
+  return pins.map((pinValue, index) => ({
+    pin: pinValue,
+    name: names[index] ?? '',
+    percent: percents[index] ?? '',
+  }));
+}
+
+async function findProgramYearId(year: number): Promise<string | null> {
+  const safeYear = escapeODataString(String(year));
+  const result = await Vsi_programyearsService.getAll({
+    maxPageSize: 1,
+    top: 1,
+    select: ['vsi_programyearid', 'vsi_year'],
+    filter: `vsi_year eq '${safeYear}'`,
+  });
+  return result.data?.[0]?.vsi_programyearid ?? null;
+}
+
+async function findPartnerEnrolment(pinValue: string, programYearId: string): Promise<Vsi_participantprogramyears | null> {
+  const safePin = escapeODataString(pinValue);
+  const safeProgramYearId = escapeODataString(normalizeGuid(programYearId));
+
+  const exact = await Vsi_participantprogramyearsService.getAll({
+    maxPageSize: 1,
+    top: 1,
+    select: PARTNER_ENROLMENT_SELECT,
+    filter: `_vsi_programyearid_value eq '${safeProgramYearId}' and vsi_name eq '${safePin}'`,
+  });
+  if (exact.data?.[0]) return exact.data[0];
+
+  const containsPin = await Vsi_participantprogramyearsService.getAll({
+    maxPageSize: 1,
+    top: 1,
+    select: PARTNER_ENROLMENT_SELECT,
+    filter: `_vsi_programyearid_value eq '${safeProgramYearId}' and contains(vsi_name,'${safePin}')`,
+  });
+  return containsPin.data?.[0] ?? null;
+}
+
 function getFarmsWorkflowErrorMessage(error: unknown): string {
   const fallback = 'Unable to load FARMS enrolment calculation.';
   const message = error instanceof Error ? error.message : String(error || fallback);
@@ -275,6 +399,120 @@ function CalculationOption({ checked, label }: { checked: boolean; label: string
   );
 }
 
+function PartnerViewPanel({
+  rows,
+  loading,
+  error,
+  farmsLegacyBaseUrl,
+  farmsScenarioProgramYear,
+  routeSource,
+  open,
+  pinned,
+  onToggleOpen,
+  onTogglePinned,
+}: {
+  rows: PartnerComparisonRow[];
+  loading: boolean;
+  error: string | null;
+  farmsLegacyBaseUrl: string;
+  farmsScenarioProgramYear: number | null;
+  routeSource?: string;
+  open: boolean;
+  pinned: boolean;
+  onToggleOpen: () => void;
+  onTogglePinned: () => void;
+}) {
+  if (!open) {
+    return (
+      <aside className="calc-comparison-panel calc-comparison-panel-collapsed" aria-label="Partner comparison panel">
+        <button className="calc-panel-tab" type="button" onClick={onToggleOpen} title="Expand partner panel" aria-label="Expand partner panel">
+          <PanelRightOpen size={14} aria-hidden="true" />
+          <span>Partner view</span>
+        </button>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="calc-comparison-panel" aria-label="Partner comparison panel">
+      <div className="calc-comparison-header">
+        <h2>Partner view</h2>
+        <div className="calc-comparison-actions">
+          <button
+            className={`calc-panel-icon-btn${pinned ? ' calc-panel-icon-btn-active' : ''}`}
+            type="button"
+            onClick={onTogglePinned}
+            title={pinned ? 'Unpin panel' : 'Pin panel'}
+            aria-label={pinned ? 'Unpin partner panel' : 'Pin partner panel'}
+          >
+            <Pin size={14} aria-hidden="true" />
+          </button>
+          <button className="calc-panel-icon-btn calc-panel-icon-btn-square" type="button" onClick={onToggleOpen} title="Collapse partner panel" aria-label="Collapse partner panel">
+            <PanelRightClose size={14} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      {loading && <p className="calc-panel-state">Loading partners...</p>}
+      {error && <p className="calc-panel-state calc-panel-state-error">{error}</p>}
+      {!loading && !error && !rows.length && <p className="calc-panel-state">No partner data found.</p>}
+      {!loading && !error && rows.length > 0 && (
+        <div className="calc-partner-list">
+          {rows.map(row => {
+            const enrolment = row.enrolment;
+            const name = row.name || enrolment?.vsi_participantidname || '';
+            const status = enrolment ? getEnrolmentStatusLabel(enrolment.vsi_enrolmentstatus) : '';
+            const farmsUrl = buildFarmsScenarioUrl(farmsLegacyBaseUrl, row.pin, farmsScenarioProgramYear);
+            return (
+              <div className="calc-partner-card" key={row.pin}>
+                <div className="calc-partner-card-top">
+                  <div>
+                    <div className="calc-partner-name">{name || '-'}</div>
+                    <div className="calc-partner-pin">
+                      {enrolment?.vsi_participantprogramyearid ? (
+                        <a href={getCalculationHref(enrolment.vsi_participantprogramyearid, routeSource)} target="_blank" rel="noopener noreferrer">
+                          PIN {row.pin}
+                        </a>
+                      ) : (
+                        <span>PIN {row.pin}</span>
+                      )}
+                    </div>
+                  </div>
+                  {farmsUrl ? (
+                    <a className="calc-partner-farms-link" href={farmsUrl} target="_blank" rel="noopener noreferrer" title="Open FARMS scenario" aria-label={`Open FARMS scenario for PIN ${row.pin}`}>
+                      <ExternalLink size={15} aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <span className="calc-partner-farms-link calc-partner-farms-link-disabled" aria-label="FARMS link unavailable">
+                      <ExternalLink size={15} aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
+                <dl className="calc-partner-details">
+                  <div>
+                    <dt>Fee</dt>
+                    <dd>{formatCurrencyBlank(enrolment?.vsi_enrolmentfee)}</dd>
+                  </div>
+                  <div>
+                    <dt>EN Status</dt>
+                    <dd>{status}</dd>
+                  </div>
+                  {row.percent && (
+                    <div>
+                      <dt>Percent</dt>
+                      <dd>{row.percent}</dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </aside>
+  );
+}
+
 function getApprovalError(
   record: Vsi_participantprogramyears,
   currentUser: CurrentUser,
@@ -321,6 +559,11 @@ export function EnrolmentCalculationPage() {
   const [letterSentMessage, setLetterSentMessage] = useState<string | null>(null);
   const [counterActionLoading, setCounterActionLoading] = useState(false);
   const [counterActionError, setCounterActionError] = useState<string | null>(null);
+  const [partnerRows, setPartnerRows] = useState<PartnerComparisonRow[]>([]);
+  const [partnerRowsLoading, setPartnerRowsLoading] = useState(false);
+  const [partnerRowsError, setPartnerRowsError] = useState<string | null>(null);
+  const [partnerPanelOpen, setPartnerPanelOpen] = useState(true);
+  const [partnerPanelPinned, setPartnerPanelPinned] = useState(true);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -343,6 +586,7 @@ export function EnrolmentCalculationPage() {
             'vsi_calculatedenfee',
             'vsi_previousyearcalculatedenfee',
             'modifiedon',
+            '_vsi_programyearid_value',
             'vsi_programyearidname',
             '_vsi_participantid_value',
             'vsi_participantidname',
@@ -363,6 +607,10 @@ export function EnrolmentCalculationPage() {
             'vsi_fortyfivedaylettersent',
             'vsi_fortyfivedaycounterpaused',
             'vsi_fortyfivedaypausedate',
+            'vsi_haspartners',
+            'vsi_partnershipnames',
+            'vsi_partnershippins',
+            'vsi_partnershippercents',
           ],
         });
 
@@ -428,14 +676,9 @@ export function EnrolmentCalculationPage() {
   const sharePointFolderUrl = record?.vsi_sharepointdocumentfolder;
   const programYear = useMemo(() => getProgramYear(record), [record]);
   const farmsScenarioProgramYear = programYear ? programYear - 2 : null;
+  const currentProgramYearId = record?._vsi_programyearid_value ?? null;
   const farmsScenarioUrl = useMemo(() => {
-    if (!farmsLegacyBaseUrl || !participantPin || !farmsScenarioProgramYear) return '';
-    const params = new URLSearchParams({
-      pin: participantPin,
-      year: String(farmsScenarioProgramYear),
-      refresh: 'true',
-    });
-    return `${farmsLegacyBaseUrl}/farm800.do?${params.toString()}`;
+    return buildFarmsScenarioUrl(farmsLegacyBaseUrl, participantPin, farmsScenarioProgramYear);
   }, [farmsLegacyBaseUrl, participantPin, farmsScenarioProgramYear]);
 
   useEffect(() => {
@@ -475,6 +718,68 @@ export function EnrolmentCalculationPage() {
       cancelled = true;
     };
   }, [participantPin, farmsScenarioProgramYear]);
+
+  useEffect(() => {
+    if (!participantPin || !programYear || !farmsScenarioProgramYear) {
+      setPartnerRows([]);
+      setPartnerRowsError(null);
+      setPartnerRowsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPartnerRows([]);
+    setPartnerRowsError(null);
+    setPartnerRowsLoading(true);
+
+    (async () => {
+      try {
+        const lookupProgramYearId = await findProgramYearId(farmsScenarioProgramYear);
+        if (cancelled) return;
+        if (!lookupProgramYearId) {
+          setPartnerRowsError(`Unable to load partner data because lookup program year ${farmsScenarioProgramYear} was not found.`);
+          setPartnerRows([]);
+          return;
+        }
+
+        const displayProgramYearId = currentProgramYearId
+          ? normalizeGuid(currentProgramYearId)
+          : await findProgramYearId(programYear);
+        if (cancelled) return;
+        if (!displayProgramYearId) {
+          setPartnerRowsError(`Unable to load partner data because enrolment year ${programYear} was not found.`);
+          setPartnerRows([]);
+          return;
+        }
+
+        const sourceEnrolment = await findPartnerEnrolment(participantPin, lookupProgramYearId);
+        if (cancelled) return;
+        if (!sourceEnrolment) {
+          setPartnerRows([]);
+          return;
+        }
+
+        const summaries = getPartnerSummaries(sourceEnrolment);
+        setPartnerRows(summaries);
+
+        const rows = await Promise.all(summaries.map(async (summary) => ({
+          ...summary,
+          enrolment: await findPartnerEnrolment(summary.pin, displayProgramYearId) ?? undefined,
+        })));
+        if (!cancelled) setPartnerRows(rows);
+      } catch (err) {
+        if (cancelled) return;
+        setPartnerRows([]);
+        setPartnerRowsError(err instanceof Error ? err.message : 'Unable to load partner enrolment rows.');
+      } finally {
+        if (!cancelled) setPartnerRowsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [participantPin, programYear, farmsScenarioProgramYear, currentProgramYearId]);
 
   const participantName = useMemo(() => {
     if (!record) return '';
@@ -824,29 +1129,30 @@ export function EnrolmentCalculationPage() {
       {farmsWorkflowCalculationError && <p className="calc-state calc-state-error">{farmsWorkflowCalculationError}</p>}
 
       {!loading && !error && record && (
-        <div className="calc-legacy-workflow" aria-label="FARMS enrolment calculation">
-          <CalculationErrorMessages messages={tableErrors.unmatched} />
+        <div className={`calc-workspace${partnerPanelPinned ? ' calc-workspace-panel-pinned' : ''}`}>
+          <div className="calc-legacy-workflow" aria-label="FARMS enrolment calculation">
+            <CalculationErrorMessages messages={tableErrors.unmatched} />
 
-          <section className="calc-legacy-panel" aria-label="Enrolment fee">
-            <h2 className="calc-legacy-title">Enrolment Fee</h2>
-            <CalculationErrorMessages messages={tableErrors.enrolmentFee} />
-            <div className="calc-legacy-table-wrap">
-              <table className="calc-legacy-table calc-legacy-table-compact">
-                <thead>
-                  <tr>
-                    <th scope="col">Contribution Margin</th>
-                    <th scope="col">Fee</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>{formatCurrencyBlank(farmsEnrolment?.contributionMargin ?? record.vsi_contributionmargin)}</td>
-                    <td>{formatCurrencyBlank(farmsEnrolment?.enrolmentFee ?? record.vsi_enrolmentfee)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+            <section className="calc-legacy-panel" aria-label="Enrolment fee">
+              <h2 className="calc-legacy-title">Enrolment Fee</h2>
+              <CalculationErrorMessages messages={tableErrors.enrolmentFee} />
+              <div className="calc-legacy-table-wrap">
+                <table className="calc-legacy-table calc-legacy-table-compact">
+                  <thead>
+                    <tr>
+                      <th scope="col">Contribution Margin</th>
+                      <th scope="col">Fee</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>{formatCurrencyBlank(farmsEnrolment?.contributionMargin ?? record.vsi_contributionmargin)}</td>
+                      <td>{formatCurrencyBlank(farmsEnrolment?.enrolmentFee ?? record.vsi_enrolmentfee)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
           <section className="calc-legacy-panel" aria-label="Benefit margin calculation">
             <CalculationOption checked={!calculationTypeCode || calculationTypeCode === 'BENEFIT'} label="Calculate using Benefit Margins" />
@@ -1001,6 +1307,20 @@ export function EnrolmentCalculationPage() {
               </table>
             </div>
           </section>
+          </div>
+
+          <PartnerViewPanel
+            rows={partnerRows}
+            loading={partnerRowsLoading}
+            error={partnerRowsError}
+            farmsLegacyBaseUrl={farmsLegacyBaseUrl}
+            farmsScenarioProgramYear={farmsScenarioProgramYear}
+            routeSource={source}
+            open={partnerPanelOpen}
+            pinned={partnerPanelPinned}
+            onToggleOpen={() => setPartnerPanelOpen(prev => !prev)}
+            onTogglePinned={() => setPartnerPanelPinned(prev => !prev)}
+          />
         </div>
       )}
 
