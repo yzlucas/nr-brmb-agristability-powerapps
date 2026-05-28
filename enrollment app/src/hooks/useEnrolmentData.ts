@@ -33,6 +33,12 @@ function normalizeCoreBaseUrl(url: string | null | undefined) {
   return /\/main\.aspx(?:$|[?#])/i.test(trimmed) ? trimmed : `${trimmed.replace(/\/$/, '')}/main.aspx`;
 }
 
+export function getCoreConfig(): { coreAppId: string | null; coreBaseUrl: string | null } {
+  return { coreAppId: coreAppIdCache, coreBaseUrl: coreBaseUrlCache };
+}
+
+export { normalizeCoreBaseUrl };
+
 
 // Patch specific records in the in-memory cache by enrolment ID.
 // Called by other pages (e.g. SupervisorApprovalPage) after mutating enrolment fields

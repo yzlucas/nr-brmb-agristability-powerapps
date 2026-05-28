@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Calculator, User } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import {
   Vsi_participantprogramyearsvsi_enrolmentstatus,
@@ -9,7 +9,12 @@ import {
   type Vsi_participantprogramyearsvsi_enrolmentstatus as EnrolmentStatusValue,
 } from '../generated/models/Vsi_participantprogramyearsModel';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
-import { formatEnrolmentStatusDisplay, getTaskStatusLabel } from '../utils/helpers';
+import { Vsi_armsconfigurationsService } from '../generated/services/Vsi_armsconfigurationsService';
+import { formatEnrolmentStatusDisplay, getAvatarColor, getInitials, getTaskStatusLabel } from '../utils/helpers';
+import { getCoreConfig, normalizeCoreBaseUrl } from '../hooks/useEnrolmentData';
+
+const CORE_APP_ID_FALLBACK = '88c024d9-9fd5-ec11-a7b5-002248ada475';
+const CORE_BASE_URL_FALLBACK = 'https://aff-brmb-crm-dev.crm3.dynamics.com/main.aspx';
 
 type DateField =
   | 'vsi_enrolmentnoticesentdate'
@@ -122,6 +127,19 @@ export function EnrolmentDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [coreAppId, setCoreAppId] = useState<string | null>(() => getCoreConfig().coreAppId);
+  const [coreBaseUrl, setCoreBaseUrl] = useState<string | null>(() => getCoreConfig().coreBaseUrl);
+
+  useEffect(() => {
+    if (coreAppId !== null) return;
+    Vsi_armsconfigurationsService.getAll({ maxPageSize: 50, select: ['cr4dd_coreappid', 'vsi_coreenvironmenturl'] })
+      .then(result => {
+        const rows = result.data ?? [];
+        setCoreAppId(rows.map(r => r.cr4dd_coreappid?.trim()).find((c): c is string => !!c) ?? null);
+        setCoreBaseUrl(rows.map(r => normalizeCoreBaseUrl(r.vsi_coreenvironmenturl)).find((c): c is string => !!c) ?? null);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -206,6 +224,15 @@ export function EnrolmentDetailsPage() {
     return label || '---';
   }, [record]);
 
+  const participantHref = useMemo(() => {
+    if (!record) return null;
+    const participantId = record._vsi_participantid_value;
+    if (!participantId) return null;
+    const appId = coreAppId?.trim() || CORE_APP_ID_FALLBACK;
+    const baseUrl = coreBaseUrl?.trim() || CORE_BASE_URL_FALLBACK;
+    return `${baseUrl}?appid=${encodeURIComponent(appId)}&pagetype=entityrecord&etn=account&id=${encodeURIComponent(participantId)}`;
+  }, [record, coreAppId, coreBaseUrl]);
+
   const updateDateField = (field: DateField) => (event: ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
     setSaveNotice(null);
@@ -216,12 +243,6 @@ export function EnrolmentDetailsPage() {
     const nextValue = Number(event.target.value) as EnrolmentStatusValue;
     setSaveNotice(null);
     setFormState(prev => (prev ? { ...prev, enrolmentStatus: nextValue } : prev));
-  };
-
-  const onLateParticipantChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const checked = event.target.checked;
-    setSaveNotice(null);
-    setFormState(prev => (prev ? { ...prev, vsi_fullyprovinciallyfunded: checked } : prev));
   };
 
   const handleSave = async () => {
@@ -315,15 +336,43 @@ export function EnrolmentDetailsPage() {
         <button type="button" className="details-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
         <h1 className="details-page-title">Enrolment App / Deadlines &amp; Fees</h1>
         <div className="details-meta-strip">
-          <span className="details-meta-owner">
-            <User size={13} aria-hidden="true" />
-            {record.owneridname || getFormattedLookup(record, '_ownerid_value@OData.Community.Display.V1.FormattedValue') || '—'}
-          </span>
-          {getTaskStatusLabel(record.vsi_taskstatus) && (
-            <span className={`details-task-badge details-task-badge--${(getTaskStatusLabel(record.vsi_taskstatus) ?? '').toLowerCase()}`}>
-              {getTaskStatusLabel(record.vsi_taskstatus)}
-            </span>
-          )}
+          <div className="details-info-card">
+            <div className="details-info-stats-row">
+              <div className="details-info-stat">
+                <span className="details-info-value">{yesNoText(record.vsi_isnewparticipant)}</span>
+                <span className="details-info-label">NPP</span>
+              </div>
+              <div className="details-info-stat-divider" />
+              <div className="details-info-stat">
+                <span className="details-info-value">{yesNoText(formState.vsi_fullyprovinciallyfunded)}</span>
+                <span className="details-info-label">Late Participant</span>
+              </div>
+              <div className="details-info-stat-divider" />
+              <div className="details-info-stat">
+                <span className="details-info-value">{getTaskStatusLabel(record.vsi_taskstatus) || '—'}</span>
+                <span className="details-info-label">Task Status</span>
+              </div>
+              <div className="details-info-stat-divider" />
+              <div className="details-info-stat">
+                {(() => {
+                  const ownerName = record.owneridname || getFormattedLookup(record, '_ownerid_value@OData.Community.Display.V1.FormattedValue') || '';
+                  return (
+                    <span className="details-info-value details-info-owner-value">
+                      <span
+                        className="avatar-circle"
+                        style={{ background: getAvatarColor(ownerName), flexShrink: 0 }}
+                        aria-hidden="true"
+                      >
+                        {getInitials(ownerName)}
+                      </span>
+                      {ownerName || '—'}
+                    </span>
+                  );
+                })()}
+                <span className="details-info-label">Owner</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -331,68 +380,14 @@ export function EnrolmentDetailsPage() {
         <div className="details-header-band">
           <div className="details-header-grid">
             <div className="details-field">
-              <span className="details-label">Participant:</span>
-              <strong className="details-value-strong">{participantName}</strong>
+              {participantHref
+                ? <a className="details-participant-name" href={participantHref} target="_blank" rel="noopener noreferrer">{participantName}</a>
+                : <span className="details-participant-name">{participantName}</span>
+              }
+              <span className="details-label">Participant</span>
             </div>
-            <div className="details-field">
-              <span className="details-label">Program Year <span className="required-mark">*</span></span>
-              <strong className="details-value-strong">{programYear}</strong>
-            </div>
-            <div className="details-field">
-              <span className="details-label">Late Participant</span>
-              <label htmlFor="late-participant" className="details-checkbox-control">
-                <input
-                  id="late-participant"
-                  type="checkbox"
-                  checked={formState.vsi_fullyprovinciallyfunded}
-                  onChange={onLateParticipantChange}
-                  disabled={saving}
-                />
-              </label>
-            </div>
-            <div className="details-field">
-              <span className="details-label">NPP</span>
-              <label className="details-checkbox-control">
-                <input
-                  type="checkbox"
-                  checked={Boolean(record.vsi_isnewparticipant)}
-                  readOnly
-                  tabIndex={-1}
-                  style={{ pointerEvents: 'none' }}
-                />
-              </label>
-            </div>
-            <div className="details-field details-link-field">
-              {record.vsi_sharepointdocumentfolder ? (
-                <a
-                  className="calc-outline-btn calc-sharepoint-btn"
-                  href={record.vsi_sharepointdocumentfolder}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
-                  Go to SharePoint
-                </a>
-              ) : (
-                <button
-                  className="calc-outline-btn calc-sharepoint-btn"
-                  type="button"
-                  disabled
-                  title="No SharePoint folder link found for this enrolment"
-                >
-                  <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
-                  Go to SharePoint
-                </button>
-              )}
-              <button
-                type="button"
-                className="calc-outline-btn"
-                onClick={() => navigate(`/calculation/${source}/${enrolmentId}`)}
-              >
-                <Calculator size={15} /> Go to Calculation
-              </button>
-            </div>
-            <div className="details-field details-link-field details-fortyfiveday-cell">
+
+            <div className="details-fortyfiveday-cell">
               {record.vsi_enrolmentstatus === 865520010 && (() => {
                 const startDate = record.vsi_fortyfivedayletterstartdate as string | undefined;
                 const paused = !!(record as unknown as Record<string, unknown>)['vsi_fortyfivedaycounterpaused'];
@@ -433,13 +428,44 @@ export function EnrolmentDetailsPage() {
                 );
               })()}
             </div>
+
+            <div className="details-link-field">
+              {record.vsi_sharepointdocumentfolder ? (
+                <a
+                  className="calc-outline-btn calc-sharepoint-btn"
+                  href={record.vsi_sharepointdocumentfolder}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
+                  Go to SharePoint
+                </a>
+              ) : (
+                <button
+                  className="calc-outline-btn calc-sharepoint-btn"
+                  type="button"
+                  disabled
+                  title="No SharePoint folder link found for this enrolment"
+                >
+                  <img src={sharepointIconUrl} className="calc-sharepoint-icon" alt="" aria-hidden="true" />
+                  Go to SharePoint
+                </button>
+              )}
+              <button
+                type="button"
+                className="calc-outline-btn"
+                onClick={() => navigate(`/calculation/${source}/${enrolmentId}`)}
+              >
+                <Calculator size={15} /> Go to Calculation
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="details-content-section details-content-main">
           <div className="details-main-grid">
             <div className="details-field">
-              <label htmlFor="enrolment-status" className="details-label">Enrolment Status <span className="required-mark">*</span></label>
+              <span className="details-label">Enrolment Status <span className="required-mark">*</span></span>
               <select
                 id="enrolment-status"
                 value={formState.enrolmentStatus}
@@ -459,8 +485,8 @@ export function EnrolmentDetailsPage() {
             </div>
 
             <div className="details-field">
-              <span className="details-label">Total Fees Paid</span>
-              <strong className="details-money">{formatCad(record.vsi_totalfeespaid)}</strong>
+              <span className="details-label">Program Year</span>
+              <strong className="details-value-strong">{programYear}</strong>
             </div>
 
             <div className="details-field">
@@ -488,6 +514,16 @@ export function EnrolmentDetailsPage() {
             </div>
 
             <div className="details-field">
+              <span className="details-label">Total Fees Paid</span>
+              <strong className="details-money">{formatCad(record.vsi_totalfeespaid)}</strong>
+            </div>
+
+            <div className="details-field">
+              <span className="details-label">Manual Review</span>
+              <strong className="details-value-strong">{yesNoText(record.vsi_manualreview)}</strong>
+            </div>
+
+            <div className="details-field" style={{ gridColumn: 3 }}>
               <label htmlFor="late-notice-date" className="details-label">Late Enrolment Notice Sent Date</label>
               <input
                 id="late-notice-date"
@@ -498,19 +534,12 @@ export function EnrolmentDetailsPage() {
                 disabled={saving}
               />
             </div>
-
-            <div className="details-field">
-              <span className="details-label">Manual Review</span>
-              <strong className="details-value-strong">{yesNoText(record.vsi_manualreview)}</strong>
-            </div>
           </div>
         </div>
 
         <div className="details-section-break" />
 
         <div className="details-content-section details-content-fees">
-          <h2 className="details-section-title">Enrolment Deadlines and Fees</h2>
-
           <div className="details-fees-grid">
             <div className="details-field">
               <span className="details-label">Enrolment Fee</span>

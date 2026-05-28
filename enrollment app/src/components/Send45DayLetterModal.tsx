@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Generate45DayLetterService } from '../generated/services/Generate45DayLetterService';
 import { Vsi_programyearsService } from '../generated/services/Vsi_programyearsService';
+
+type MissingInfoType = 'Statement A' | 'Production Information' | 'All Reference Years';
+type MissingItem = { id: number; year: string; type: MissingInfoType };
 
 type Props = {
   enrolmentId: string;
@@ -15,14 +18,13 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+let nextId = 1;
+
 export function Send45DayLetterModal({ enrolmentId, enrolmentName, programYear, onClose, onSuccess }: Props) {
   const [letterDate, setLetterDate] = useState(todayIso());
-  const [selectedYears, setSelectedYears] = useState<string[]>(programYear ? [programYear] : []);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [yearsLoading, setYearsLoading] = useState(true);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [moreInfo, setMoreInfo] = useState('');
+  const [missingItems, setMissingItems] = useState<MissingItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,30 +34,45 @@ export function Send45DayLetterModal({ enrolmentId, enrolmentName, programYear, 
         const years = (result.data ?? [])
           .map(r => r.vsi_year)
           .filter((y): y is string => !!y);
-        setYearOptions(years);
         if (programYear && !years.includes(programYear)) {
-          setYearOptions(prev => [programYear, ...prev].sort((a, b) => Number(b) - Number(a)));
+          years.unshift(programYear);
+          years.sort((a, b) => Number(b) - Number(a));
         }
+        setYearOptions(years);
       })
       .finally(() => setYearsLoading(false));
   }, []);
 
-  const toggleYear = (y: string, checked: boolean) => {
-    setSelectedYears(prev => checked ? [...prev, y] : prev.filter(v => v !== y));
+  const addMissingItem = () => {
+    const defaultYear = yearOptions[0] ?? programYear ?? '';
+    setMissingItems(prev => [...prev, { id: nextId++, year: defaultYear, type: 'Statement A' }]);
   };
-  const removeYear = (y: string) => setSelectedYears(prev => prev.filter(v => v !== y));
-  const sortedSelected = [...selectedYears].sort((a, b) => Number(b) - Number(a));
-  const unselected = yearOptions.filter(y => !selectedYears.includes(y));
+
+  const updateMissingItem = (id: number, field: 'year' | 'type', value: string) => {
+    setMissingItems(prev => prev.map(item =>
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const removeMissingItem = (id: number) => {
+    setMissingItems(prev => prev.filter(item => item.id !== id));
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError(null);
     try {
+      const parts = missingItems.map(item =>
+        item.type === 'All Reference Years' ? item.type : `your ${item.year} ${item.type}`
+      );
+      const missingText = parts.length > 1
+        ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1]
+        : parts[0] ?? '';
       const result = await Generate45DayLetterService.Run({
         text: enrolmentId,
         date: letterDate,
-        text_1: selectedYears.join(', '),
-        text_2: moreInfo,
+        text_1: programYear,
+        text_2: missingText,
       });
       if (result.error) {
         const code = (result.error as { code?: number | string }).code;
@@ -100,71 +117,63 @@ export function Send45DayLetterModal({ enrolmentId, enrolmentName, programYear, 
 
           <div className="modal-field">
             <label>Program Year</label>
-            <div className="modal-year-selector" ref={dropdownRef}>
-              {/* Tags row */}
-              <div className="modal-year-tags-row">
-                {sortedSelected.map(y => (
-                  <span key={y} className="modal-year-tag">
-                    {y}
-                    <button
-                      type="button"
-                      className="modal-year-tag-remove"
-                      onClick={() => removeYear(y)}
-                      disabled={submitting}
-                      aria-label={`Remove ${y}`}
-                    >&times;</button>
-                  </span>
-                ))}
-                {unselected.length > 0 && (
-                  <button
-                    type="button"
-                    className="modal-year-add-btn"
-                    onClick={() => setDropdownOpen(o => !o)}
-                    disabled={submitting || yearsLoading}
-                  >
-                    {yearsLoading ? 'Loading…' : '+ Add year'}
-                  </button>
-                )}
-              </div>
-              {/* Dropdown */}
-              {dropdownOpen && (
-                <div className="modal-year-dropdown">
-                  {unselected.map(y => (
-                    <button
-                      key={y}
-                      type="button"
-                      className="modal-year-dropdown-item"
-                      onClick={() => { toggleYear(y, true); setDropdownOpen(false); }}
-                      disabled={submitting}
-                    >
-                      {y}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <span className="modal-program-year-display">{programYear}</span>
           </div>
 
           <div className="modal-field">
-            <label>More Info</label>
-            <select
-              value={moreInfo}
-              onChange={e => setMoreInfo(e.target.value)}
-              disabled={submitting}
-              className="modal-text-input"
+            <label>Missing Information</label>
+            {missingItems.length > 0 && (
+              <div className="modal-missing-info-list">
+                {missingItems.map(item => (
+                  <div key={item.id} className="modal-missing-info-row">
+                    {item.type !== 'All Reference Years' && (
+                      <select
+                        value={item.year}
+                        onChange={e => updateMissingItem(item.id, 'year', e.target.value)}
+                        disabled={submitting || yearsLoading}
+                        className="modal-missing-year-select"
+                      >
+                        {yearOptions.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    )}
+                    <select
+                      value={item.type}
+                      onChange={e => updateMissingItem(item.id, 'type', e.target.value as MissingInfoType)}
+                      disabled={submitting}
+                      className="modal-missing-type-select"
+                    >
+                      <option value="Statement A">Statement A</option>
+                      <option value="Production Information">Production Information</option>
+                      <option value="All Reference Years">All Reference Years</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="modal-missing-remove-btn"
+                      onClick={() => removeMissingItem(item.id)}
+                      disabled={submitting}
+                      aria-label="Remove"
+                    >&times;</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              className="modal-year-add-btn"
+              onClick={addMissingItem}
+              disabled={submitting || yearsLoading}
             >
-              <option value="">-- Select one --</option>
-              <option value="All Reference years">All Reference years</option>
-              <option value="Statement A">Statement A</option>
-              <option value="Production Information">Production Information</option>
-            </select>
+              {yearsLoading ? 'Loading…' : '+ Add missing information'}
+            </button>
           </div>
 
           {error && <p className="modal-error">{error}</p>}
         </div>
 
         <div className="modal-footer">
-          <button className="btn-ok" type="button" onClick={handleSubmit} disabled={submitting || yearsLoading || !letterDate || selectedYears.length === 0 || !moreInfo}>
+          <button className="btn-ok" type="button" onClick={handleSubmit} disabled={submitting || yearsLoading || !letterDate || missingItems.length === 0}>
             {submitting ? 'Sending…' : 'Send Letter'}
           </button>
           <button className="btn-cancel" type="button" onClick={onClose} disabled={submitting}>

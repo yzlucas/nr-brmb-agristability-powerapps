@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { CircleCheck, ExternalLink, PanelRightClose, PanelRightOpen, Pin, RefreshCw, Send, User } from 'lucide-react';
+import { CircleCheck, ExternalLink, PanelRightClose, PanelRightOpen, Pin, RefreshCw, Send } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApprovalErrorModal } from '../components/ApprovalErrorModal';
 import { Send45DayLetterModal } from '../components/Send45DayLetterModal';
 import { ConfirmActionModal } from '../components/ConfirmActionModal';
 import { ReferToSupervisorModal } from '../components/ReferToSupervisorModal';
-import { patchEnrolmentCache } from '../hooks/useEnrolmentData';
+import { getCoreConfig, normalizeCoreBaseUrl, patchEnrolmentCache } from '../hooks/useEnrolmentData';
 import { removeSaItemsFromCache } from './SupervisorApprovalPage';
 import { useRole } from '../context/RoleContext';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
@@ -17,9 +17,11 @@ import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_pa
 import { Vsi_programyearsService } from '../generated/services/Vsi_programyearsService';
 import { farmsApi } from '../services/farmsApi';
 import { resolveCurrentSystemUser } from '../utils/currentUser';
-import { formatCurrencyOr, getEnrolmentStatusLabel, getTaskStatusLabel } from '../utils/helpers';
+import { formatCurrencyOr, getAvatarColor, getEnrolmentStatusLabel, getInitials, getTaskStatusLabel } from '../utils/helpers';
 
 const DATAVERSE_ORG_URL = 'https://aff-brmb-crm-dev.crm3.dynamics.com/';
+const CORE_APP_ID_FALLBACK = '88c024d9-9fd5-ec11-a7b5-002248ada475';
+const CORE_BASE_URL_FALLBACK = 'https://aff-brmb-crm-dev.crm3.dynamics.com/main.aspx';
 const BENEFIT_MARGIN_COUNT = 5;
 const APPROVABLE_STATUSES = new Set([865520005, 865520006]);
 const APPROVABLE_TASK_STATUSES = new Set([865520000, 865520001, 865520002]);
@@ -641,7 +643,7 @@ export function EnrolmentCalculationPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [_currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [approvalErrorModal, setApprovalErrorModal] = useState<string | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -659,8 +661,21 @@ export function EnrolmentCalculationPage() {
   const [partnerRowsError, setPartnerRowsError] = useState<string | null>(null);
   const [partnerPanelOpen, setPartnerPanelOpen] = useState(true);
   const [partnerPanelPinned, setPartnerPanelPinned] = useState(true);
-  const [queueWorkerName, setQueueWorkerName] = useState<string | null>(null);
-  const [queueWorkerId, setQueueWorkerId] = useState<string | null>(null);
+  const [_queueWorkerName, setQueueWorkerName] = useState<string | null>(null);
+  const [_queueWorkerId, setQueueWorkerId] = useState<string | null>(null);
+  const [coreAppId, setCoreAppId] = useState<string | null>(() => getCoreConfig().coreAppId);
+  const [coreBaseUrl, setCoreBaseUrl] = useState<string | null>(() => getCoreConfig().coreBaseUrl);
+
+  useEffect(() => {
+    if (coreAppId !== null) return;
+    Vsi_armsconfigurationsService.getAll({ maxPageSize: 50, select: ['cr4dd_coreappid', 'vsi_coreenvironmenturl'] })
+      .then(result => {
+        const rows = result.data ?? [];
+        setCoreAppId(rows.map(r => r.cr4dd_coreappid?.trim()).find((c): c is string => !!c) ?? null);
+        setCoreBaseUrl(rows.map(r => normalizeCoreBaseUrl(r.vsi_coreenvironmenturl)).find((c): c is string => !!c) ?? null);
+      })
+      .catch(() => {});
+  }, [coreAppId]);
 
   useEffect(() => {
     if (!enrolmentId) {
@@ -710,6 +725,7 @@ export function EnrolmentCalculationPage() {
             'vsi_partnershippins',
             'vsi_partnershippercents',
             'vsi_isnewparticipant',
+            'vsi_fullyprovinciallyfunded',
           ],
         });
 
@@ -909,7 +925,7 @@ export function EnrolmentCalculationPage() {
     return () => {
       cancelled = true;
     };
-  }, [participantPin, programYear, farmsScenarioProgramYear, currentProgramYearId]);
+  }, [participantPin, programYear, farmsScenarioProgramYear, currentProgramYearId, refreshKey]);
 
   const participantName = useMemo(() => {
     if (!record) return '';
@@ -922,7 +938,14 @@ export function EnrolmentCalculationPage() {
     ? (record.owneridname || ((record as unknown as Record<string, unknown>)['_ownerid_value@OData.Community.Display.V1.FormattedValue'] as string | undefined) || null)
     : null;
   const taskStatusLabel = getTaskStatusLabel(record?.vsi_taskstatus) || null;
-  const workedByMe = !!(queueWorkerId && currentUser && normalizeGuid(queueWorkerId) === normalizeGuid(currentUser.systemUserId));
+  const participantHref = useMemo(() => {
+    if (!record) return null;
+    const participantId = record._vsi_participantid_value;
+    if (!participantId) return null;
+    const appId = coreAppId?.trim() || CORE_APP_ID_FALLBACK;
+    const baseUrl = coreBaseUrl?.trim() || CORE_BASE_URL_FALLBACK;
+    return `${baseUrl}?appid=${encodeURIComponent(appId)}&pagetype=entityrecord&etn=account&id=${encodeURIComponent(participantId)}`;
+  }, [record, coreAppId, coreBaseUrl]);
   const fallbackBenefitYears = useMemo(() => {
     return Array.from({ length: BENEFIT_MARGIN_COUNT }, (_, index) => (
       programYear ? String(programYear - (BENEFIT_MARGIN_COUNT + 1) + index) : `Year ${index + 1}`
@@ -1127,24 +1150,29 @@ export function EnrolmentCalculationPage() {
         <button type="button" className="calc-back-btn" onClick={() => navigate(backTo)}>{backLabel}</button>
         <span className="calc-page-label">Enrolment App / FARMS Calculation</span>
         {(record || loading) && (
-          <div className="calc-meta-strip">
-            <span className="calc-meta-owner">
-              <User size={13} aria-hidden="true" />
-              {ownerName || (loading ? '...' : '—')}
-            </span>
-            {taskStatusLabel && (
-              <span className={`calc-task-badge calc-task-badge--${taskStatusLabel.toLowerCase()}`}>
-                {taskStatusLabel}
-              </span>
-            )}
-            {queueWorkerName && (
-              <>
-                <span className="calc-meta-sep" aria-hidden="true">•</span>
-                <span className="calc-meta-worked-by">
-                  Worked by: {workedByMe ? `${queueWorkerName} (you)` : queueWorkerName}
-                </span>
-              </>
-            )}
+          <div className="details-meta-strip">
+            <div className="details-info-card">
+              <div className="details-info-stats-row">
+                <div className="details-info-stat">
+                  <span className="details-info-value">{taskStatusLabel || (loading ? '...' : '—')}</span>
+                  <span className="details-info-label">Task Status</span>
+                </div>
+                <div className="details-info-stat-divider" />
+                <div className="details-info-stat">
+                  <span className="details-info-value details-info-owner-value">
+                    <span
+                      className="avatar-circle"
+                      style={{ background: getAvatarColor(ownerName || ''), flexShrink: 0 }}
+                      aria-hidden="true"
+                    >
+                      {getInitials(ownerName || '')}
+                    </span>
+                    {ownerName || (loading ? '...' : '—')}
+                  </span>
+                  <span className="details-info-label">Owner</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1153,7 +1181,10 @@ export function EnrolmentCalculationPage() {
         <Link to={`/enrolment/${source}/${enrolmentId}`} className="calc-enrolment-name-link">
           {record?.vsi_name ?? (loading ? 'Loading...' : '-')}
         </Link>
-        <h1 className="calc-participant-name">{participantName || (loading ? 'Loading...' : '-')}</h1>
+        {participantHref
+          ? <a className="details-participant-name" href={participantHref} target="_blank" rel="noopener noreferrer">{participantName || (loading ? 'Loading...' : '-')}</a>
+          : <span className="details-participant-name">{participantName || (loading ? 'Loading...' : '-')}</span>
+        }
         {(record || loading) && (
           <ReadOnlyYesNoField
             label="Is this a New Participant?"
@@ -1173,37 +1204,6 @@ export function EnrolmentCalculationPage() {
           <RefreshCw size={14} aria-hidden="true" />
           Refresh
         </button>
-        <button
-          className="calc-outline-btn"
-          type="button"
-          onClick={() => setShowSupervisorModal(true)}
-          disabled={!record}
-        >
-          <Send size={14} aria-hidden="true" />
-          Refer to Supervisor
-        </button>
-        {activeRole !== 'Verifier' && (
-          <button
-            className="calc-outline-btn"
-            type="button"
-            onClick={() => void handleApproveClick()}
-            disabled={!record || approving}
-          >
-            <CircleCheck size={14} aria-hidden="true" />
-            {approving ? 'Approving...' : 'Approve'}
-          </button>
-        )}
-        {activeRole === 'Verifier' && (
-          <button
-            className="calc-outline-btn"
-            type="button"
-            onClick={() => setShowCompleteConfirm(true)}
-            disabled={!record || completing}
-          >
-            <CircleCheck size={14} aria-hidden="true" />
-            {completing ? 'Completing...' : 'Complete'}
-          </button>
-        )}
         <div className="calc-toolbar-gap" />
         {farmsScenarioUrl ? (
           <a
@@ -1495,6 +1495,40 @@ export function EnrolmentCalculationPage() {
               </table>
             </div>
           </section>
+
+          <div className="calc-approval-row">
+            <button
+              className="calc-outline-btn"
+              type="button"
+              onClick={() => setShowSupervisorModal(true)}
+              disabled={!record}
+            >
+              <Send size={14} aria-hidden="true" />
+              Refer to Supervisor
+            </button>
+            {activeRole !== 'Verifier' && (
+              <button
+                className="calc-outline-btn"
+                type="button"
+                onClick={() => void handleApproveClick()}
+                disabled={!record || approving}
+              >
+                <CircleCheck size={14} aria-hidden="true" />
+                {approving ? 'Approving...' : 'Approve'}
+              </button>
+            )}
+            {activeRole === 'Verifier' && (
+              <button
+                className="calc-outline-btn"
+                type="button"
+                onClick={() => setShowCompleteConfirm(true)}
+                disabled={!record || completing}
+              >
+                <CircleCheck size={14} aria-hidden="true" />
+                {completing ? 'Completing...' : 'Complete'}
+              </button>
+            )}
+          </div>
           </div>
 
           <PartnerViewPanel
