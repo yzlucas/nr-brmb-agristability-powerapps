@@ -1,7 +1,7 @@
 import { resolveCurrentSystemUser } from '../utils/currentUser';
 import { patchEnrolmentCache } from '../hooks/useEnrolmentData';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { Filter, Calculator, ClipboardList, LogOut, UserPlus, CircleCheck, Wrench } from 'lucide-react';
+import { Filter, Calculator, ClipboardList, LogOut, UserPlus, CircleCheck, Wrench, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useRole } from '../context/RoleContext';
 import type { Vsi_participantprogramyears } from '../generated/models/Vsi_participantprogramyearsModel';
@@ -54,7 +54,19 @@ export function clearSaCache(): void {
   saQueueWorkCache = null;
   saSupervisorQueueIdsCache = null;
   saWorkerAvatarUrlsCache = null;
+  saFilterCache = null;
 }
+
+type SaFilterCache = {
+  sortKey: SupervisorColumnKey | null;
+  sortDir: SortDir;
+  columnOrder: SupervisorColumnKey[];
+  columnWidths: Partial<Record<SupervisorColumnKey, number>>;
+  columnFilters: Record<SupervisorColumnKey, Set<string>>;
+  columnFilterOps: Record<SupervisorColumnKey, FilterOperator>;
+  page: number;
+};
+let saFilterCache: SaFilterCache | null = null;
 
 type QueueWorkMeta = {
   workedBy: string;
@@ -180,7 +192,7 @@ export function SupervisorApprovalPage() {
   const [loading, setLoading] = useState(saItemsCache === null);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => saFilterCache?.page ?? 1);
   const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null);
   const [currentUser, setCurrentUser] = useState<{ systemUserId: string; displayName: string } | null>(null);
   const [approvingBulk, setApprovingBulk] = useState(false);
@@ -200,14 +212,19 @@ export function SupervisorApprovalPage() {
   const addToast = (message: string, type: ToastMessage['type'] = 'success') =>
     setToasts(prev => [...prev, { id: nextToastId(), message, type }]);
   const dismissToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
-  const [columnOrder, setColumnOrder] = useState<SupervisorColumnKey[]>(DEFAULT_COLUMN_ORDER);
+  const [columnOrder, setColumnOrder] = useState<SupervisorColumnKey[]>(() => saFilterCache?.columnOrder ?? DEFAULT_COLUMN_ORDER);
   const [colDragIdx, setColDragIdx] = useState<number | null>(null);
-  const [sortKey, setSortKey] = useState<SupervisorColumnKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [columnWidths, setColumnWidths] = useState<Partial<Record<SupervisorColumnKey, number>>>(DEFAULT_COLUMN_WIDTHS);
-  const [columnFilters, setColumnFilters] = useState<Record<SupervisorColumnKey, Set<string>>>(() => createEmptyFilters());
-  const [columnFilterOps, setColumnFilterOps] = useState<Record<SupervisorColumnKey, FilterOperator>>(DEFAULT_FILTER_OPS);
+  const [sortKey, setSortKey] = useState<SupervisorColumnKey | null>(() => saFilterCache?.sortKey ?? null);
+  const [sortDir, setSortDir] = useState<SortDir>(() => saFilterCache?.sortDir ?? 'asc');
+  const [columnWidths, setColumnWidths] = useState<Partial<Record<SupervisorColumnKey, number>>>(() => saFilterCache?.columnWidths ?? DEFAULT_COLUMN_WIDTHS);
+  const [columnFilters, setColumnFilters] = useState<Record<SupervisorColumnKey, Set<string>>>(() => saFilterCache?.columnFilters ?? createEmptyFilters());
+  const [columnFilterOps, setColumnFilterOps] = useState<Record<SupervisorColumnKey, FilterOperator>>(() => saFilterCache?.columnFilterOps ?? DEFAULT_FILTER_OPS);
   const [refreshCounter, setRefreshCounter] = useState(0);
+
+  // Persist filter/sort/pagination state so it survives navigating away and back.
+  useEffect(() => {
+    saFilterCache = { sortKey, sortDir, columnOrder, columnWidths, columnFilters, columnFilterOps, page };
+  }, [sortKey, sortDir, columnOrder, columnWidths, columnFilters, columnFilterOps, page]);
 
   useEffect(() => {
     let cancelled = false;
@@ -333,10 +350,11 @@ export function SupervisorApprovalPage() {
             if (existing) continue;
 
             const workerDisplayName = (q as unknown as Record<string, unknown>)['_workerid_value@OData.Community.Display.V1.FormattedValue'] as string | undefined;
+            const hasWorker = !!q._workerid_value;
             queueMap[enrolmentId] = {
               workedBy: workerDisplayName ?? '—',
-              workedOn: formatWorkedOn(q.workeridmodifiedon),
-              workedOnRaw: q.workeridmodifiedon,
+              workedOn: hasWorker ? formatWorkedOn(q.workeridmodifiedon) : '—',
+              workedOnRaw: hasWorker ? q.workeridmodifiedon : undefined,
               enteredQueue: formatWorkedOn(q.enteredon),
               enteredQueueRaw: q.enteredon,
               workerId: q._workerid_value,
@@ -445,10 +463,11 @@ export function SupervisorApprovalPage() {
           const q = result.data![0];
           const workerDisplayName = (q as unknown as Record<string, unknown>)['_workerid_value@OData.Community.Display.V1.FormattedValue'] as string | undefined;
           const queueDisplayName = (q as unknown as Record<string, unknown>)['_queueid_value@OData.Community.Display.V1.FormattedValue'] as string | undefined;
+          const hasWorker = !!q._workerid_value;
           updates[enrolmentId] = {
             workedBy: workerDisplayName ?? '—',
-            workedOn: formatWorkedOn(q.workeridmodifiedon),
-            workedOnRaw: q.workeridmodifiedon,
+            workedOn: hasWorker ? formatWorkedOn(q.workeridmodifiedon) : '—',
+            workedOnRaw: hasWorker ? q.workeridmodifiedon : undefined,
             enteredQueue: formatWorkedOn(q.enteredon),
             enteredQueueRaw: q.enteredon,
             workerId: q._workerid_value,
@@ -485,10 +504,7 @@ export function SupervisorApprovalPage() {
     if (!APPROVABLE_STATUSES.has(row.item.vsi_enrolmentstatus as unknown as number)) return false;
     // Must have a calculated fee (not null)
     if (row.calculatedFeeValue == null) return false;
-    // Must be assigned to the current user
-    if (!currentUser?.systemUserId) return false;
-    const workerId = normalizeGuid(row.workMeta?.workerId);
-    return workerId === normalizeGuid(currentUser.systemUserId);
+    return true;
   };
 
   const getApprovalOwnershipError = (rows: SupervisorRowView[]): string | null => {
@@ -507,24 +523,17 @@ export function SupervisorApprovalPage() {
       return `${missingFee.enrolmentName} cannot be approved because it does not have a calculated fee.`;
     }
 
-    // Check if any are not picked by the current user
-    const notPicked = blockedRows.find(row => normalizeGuid(row.workMeta?.workerId) !== normalizeGuid(currentUser?.systemUserId));
-    if (notPicked) {
-      const assignedTo = notPicked.workMeta?.workerId ? `assigned to ${notPicked.workedBy}` : 'not picked';
-      return `${notPicked.enrolmentName} cannot be approved because it is ${assignedTo}. An enrolment must be picked by you before it can be approved.`;
-    }
-
-    return 'Some selected enrolments cannot be approved. Enrolments must have a status of Verified EN Calculated or Unverified EN Calculated, have a calculated fee, and be picked by you.';
+    return 'Some selected enrolments cannot be approved. Enrolments must have a status of Verified EN Calculated or Unverified EN Calculated and have a calculated fee.';
   };
 
   const bulkApprovalBlockedTooltip = 'One or more selected approvals is being worked on by another user';
 
   const updateQueueItemWorker = async (queueItemId: string, systemUserId: string | null): Promise<void> => {
     // To set a lookup, use @odata.bind with the navigation property name.
-    // To clear a lookup, use the same navigation property name with null.
+    // To clear a lookup, set the navigation property name directly to null (without @odata.bind).
     const payload = systemUserId
       ? { 'workerid_systemuser@odata.bind': `/systemusers(${systemUserId})` }
-      : { 'workerid_systemuser@odata.bind': null };
+      : { 'workerid_systemuser': null };
 
     let updateResult = await QueueitemsService.update(queueItemId, payload as unknown as Parameters<typeof QueueitemsService.update>[1]);
 
@@ -1005,7 +1014,7 @@ export function SupervisorApprovalPage() {
             setRefreshCounter(prev => prev + 1);
           }}
         >
-          {loading ? 'Refreshing...' : 'Refresh'}
+          <RefreshCw size={14} />{loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 

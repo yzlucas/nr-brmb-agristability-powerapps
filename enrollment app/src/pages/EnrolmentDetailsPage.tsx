@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Calculator, User } from 'lucide-react';
 import sharepointIconUrl from '/icons/sharepoint.svg?url';
 import {
   Vsi_participantprogramyearsvsi_enrolmentstatus,
@@ -8,7 +9,7 @@ import {
   type Vsi_participantprogramyearsvsi_enrolmentstatus as EnrolmentStatusValue,
 } from '../generated/models/Vsi_participantprogramyearsModel';
 import { Vsi_participantprogramyearsService } from '../generated/services/Vsi_participantprogramyearsService';
-import { formatEnrolmentStatusDisplay } from '../utils/helpers';
+import { formatEnrolmentStatusDisplay, getTaskStatusLabel } from '../utils/helpers';
 
 type DateField =
   | 'vsi_enrolmentnoticesentdate'
@@ -44,6 +45,8 @@ const DETAIL_SELECT = [
   '_vsi_programyearid_value',
   'vsi_sharepointdocumentfolder',
   'vsi_enrolmentstatus',
+  'vsi_taskstatus',
+  'owneridname',
   'vsi_totalfeesowedcalculated',
   'vsi_totalfeespaid',
   'vsi_enrolmentnoticesentdate',
@@ -301,7 +304,6 @@ export function EnrolmentDetailsPage() {
       <section className="details-wrapper">
         <p className="enrolment-error">{error ?? 'Enrolment record not found.'}</p>
         <button type="button" className="details-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
-        <div style={{marginTop:8, fontSize:12, color:'#888'}}>Debug: source = <b>{source}</b></div>
       </section>
     );
   }
@@ -312,8 +314,18 @@ export function EnrolmentDetailsPage() {
       <div className="details-title-row">
         <button type="button" className="details-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
         <h1 className="details-page-title">Enrolment App / Deadlines &amp; Fees</h1>
+        <div className="details-meta-strip">
+          <span className="details-meta-owner">
+            <User size={13} aria-hidden="true" />
+            {record.owneridname || getFormattedLookup(record, '_ownerid_value@OData.Community.Display.V1.FormattedValue') || '—'}
+          </span>
+          {getTaskStatusLabel(record.vsi_taskstatus) && (
+            <span className={`details-task-badge details-task-badge--${(getTaskStatusLabel(record.vsi_taskstatus) ?? '').toLowerCase()}`}>
+              {getTaskStatusLabel(record.vsi_taskstatus)}
+            </span>
+          )}
+        </div>
       </div>
-      <div style={{marginBottom:12, fontSize:12, color:'#888'}}>Debug: source = <b>{source}</b></div>
 
       <div className="details-composite">
         <div className="details-header-band">
@@ -372,6 +384,13 @@ export function EnrolmentDetailsPage() {
                   Go to SharePoint
                 </button>
               )}
+              <button
+                type="button"
+                className="calc-outline-btn"
+                onClick={() => navigate(`/calculation/${source}/${enrolmentId}`)}
+              >
+                <Calculator size={15} /> Go to Calculation
+              </button>
             </div>
             <div className="details-field details-link-field details-fortyfiveday-cell">
               {record.vsi_enrolmentstatus === 865520010 && (() => {

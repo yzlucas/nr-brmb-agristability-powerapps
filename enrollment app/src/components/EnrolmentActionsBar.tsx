@@ -37,9 +37,11 @@ export function EnrolmentActionsBar({ hasSelection, selectedCount, onOpenBulkNot
           <UserCheck size={15} /> Refer to Supervisor
         </button>
       )}
-      <button className="dash-btn-primary" onClick={onOpenApproveCalculatedFees} disabled={!hasSelection}>
-        <CircleCheck size={15} /> Approve Calculated Fees
-      </button>
+      {activeRole !== 'Verifier' && (
+        <button className="dash-btn-primary" onClick={onOpenApproveCalculatedFees} disabled={!hasSelection}>
+          <CircleCheck size={15} /> Approve Calculated Fees
+        </button>
+      )}
     </div>
   );
 }

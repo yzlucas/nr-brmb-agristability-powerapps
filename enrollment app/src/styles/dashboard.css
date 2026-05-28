@@ -22,19 +22,19 @@
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.9rem;
+  gap: 0.55rem;
   background: #ddeaf8;
-  border-radius: 16px;
-  padding: 1.5rem 2rem;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
+  border-radius: 14px;
+  padding: 0.85rem 1.25rem;
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
   width: fit-content;
 }
 .worklist-item {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.88rem;
+  gap: 0.35rem;
+  font-size: 0.82rem;
 }
 .worklist-icon {
   color: #2b6cb0;
