@@ -138,6 +138,16 @@ button:focus-visible {
   min-width: 0.5rem;
 }
 
+.calc-approval-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.85rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
 /* kept for reference, no longer used in layout */
 .calc-record-header {
   display: flex;

@@ -644,6 +644,54 @@
   cursor: pointer;
 }
 .modal-year-add-btn:hover { border-color: #334155; color: #1e293b; }
+.modal-program-year-display {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+.modal-missing-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.modal-missing-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.modal-missing-year-select {
+  width: 6rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #374151;
+  background: #fff;
+  font-family: inherit;
+}
+.modal-missing-type-select {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #374151;
+  background: #fff;
+  font-family: inherit;
+}
+.modal-missing-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  display: flex;
+  align-items: center;
+}
+.modal-missing-remove-btn:hover { color: #dc2626; }
 .modal-year-dropdown {
   position: absolute;
   top: calc(100% + 4px);

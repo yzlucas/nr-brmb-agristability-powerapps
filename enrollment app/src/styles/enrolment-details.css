@@ -19,6 +19,84 @@
   flex-shrink: 0;
 }
 
+.details-info-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #d0d6dd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.details-info-stats-row {
+  display: flex;
+  align-items: stretch;
+  padding: 0.45rem 0.1rem;
+}
+
+.details-info-card-row-divider {
+  height: 1px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+.details-info-buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.details-info-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.1rem 0.9rem;
+  gap: 0.1rem;
+}
+
+.details-info-stat-divider {
+  width: 1px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+  align-self: stretch;
+  margin: 0.15rem 0;
+}
+
+.details-info-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+}
+
+.details-info-label {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.details-info-owner-value {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.details-participant-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2b6cb0;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.details-participant-name:hover {
+  color: #1a4f8b;
+  text-decoration: underline;
+}
+
 .details-meta-owner {
   display: flex;
   align-items: center;
@@ -101,11 +179,11 @@
 }
 
 .details-link-field {
-  justify-self: end;
+  margin-left: auto;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.4rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .details-section-break {
@@ -163,7 +241,6 @@
 
 /* 45-day counter card embedded in the header band */
 .details-fortyfiveday-cell {
-  flex-basis: 100%;
   justify-content: flex-end;
 }
 
