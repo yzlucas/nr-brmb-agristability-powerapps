@@ -1,0 +1,41 @@
+name: Deploy Power Apps code app
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and push
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: enrollment app
+
+    env:
+      CI: "true"
+      SP_CLIENT_ID: 3764c263-1002-4f06-92e9-a279c70d5793
+      SP_CLIENT_SECRET: ${{ secrets.POWERAPPS_SP_CLIENT_SECRET }}
+      SP_TENANT_ID: 6fdb5200-3d0d-4a8a-b036-d3685e359adc
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: enrollment app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Push to Power Apps
+        run: npx power-apps push --non-interactive
